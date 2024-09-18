@@ -1,0 +1,6 @@
+{{define "BucketDetails"}}
+{{template "BeginDetails"}}
+{{template "BeginDetail" "Objects"}}{{.Objects}}{{template "EndDetail"}}
+{{template "BeginDetail" "Size"}}{{.Size}}{{template "EndDetail"}}
+{{template "EndDetails"}}
+{{end}}

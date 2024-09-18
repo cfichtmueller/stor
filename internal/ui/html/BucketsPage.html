@@ -1,0 +1,13 @@
+{{define "BucketsPage"}}
+{{template "BeginListPageLayout" . }}
+{{template "BeginListPageContent" .}}
+<div hx-trigger="bucketsUpdated from:body" hx-get="/c/buckets-table">
+    {{if .Buckets}}
+    {{template "BucketsTable" .}}
+    {{else}}
+    {{template "BucketsEmptyState"}}
+    {{end}}
+</div>
+{{template "EndListPageContent" .}}
+{{template "EndListPageLayout" . }}
+{{end}}

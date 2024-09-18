@@ -1,0 +1,18 @@
+{{define "ObjectsTable"}}
+{{template "BeginTable"}}
+    {{template "BeginTableHeader"}}
+        {{template "BeginTableRow"}}
+            {{template "BeginTableHead"}}Key{{template "EndTableHead"}}
+            {{template "BeginTableHead"}}Size{{template "EndTableHead"}}
+        {{template "EndTableRow"}}
+    {{template "EndTableHeader"}}
+    {{template "BeginTableBody"}}
+        {{range .Objects}}
+            {{template "BeginTableRow"}}
+                {{template "BeginTableCell"}}<a href="/{{.Bucket}}/{{.Key}}" target="_blank">{{.Key}}</a>{{template "EndTableCell"}}
+                {{template "BeginTableCell"}}{{.Size}}{{template "EndTableCell"}}
+            {{template "EndTableRow"}}
+        {{end}}
+    {{template "EndTableBody"}}
+{{template "EndTable"}}
+{{end}}

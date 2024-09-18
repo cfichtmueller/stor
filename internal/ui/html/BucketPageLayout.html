@@ -1,0 +1,10 @@
+{{define "BeginBucketPageLayout"}}
+{{template "BeginDetailsPageLayout" .}}
+{{template "BucketHeader" .Bucket}}
+{{template "BucketDetails" .Bucket}}
+{{template "DetailsPageLayoutPart2" .}}
+{{end}}
+
+{{define "EndBucketPageLayout"}}
+{{template "EndDetailsPageLayout" .}}
+{{end}}

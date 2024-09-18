@@ -1,0 +1,11 @@
+{{define "BeginLoggedInLayout"}}
+<div class="flex flex-row min-h-screen w-full bg-neutral-100">
+    <div class="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0 w-full max-w-screen-2xl">
+        {{template "Sidebar" .AppSidebar}}
+{{end}}
+
+{{define "EndLoggedInLayout"}}
+        </div>
+    </div>
+</div>
+{{end}}

@@ -1,0 +1,29 @@
+{{define "BucketsTable"}}
+{{template "BeginTable"}}
+    {{template "BeginTableHeader"}}
+        <tr class="{{template "cnTableHeaderRow"}}">
+            {{template "BeginTableHead"}}Name{{template "EndTableHead"}}
+            <th class="{{template "cnTableHead"}} text-right">Objects</th>
+            <th class="{{template "cnTableHead"}} text-right">Size</th>
+            <th class="{{template "TableCellClasses"}} flex justify-end">
+                <button class="{{template "cnPrimaryButton"}}" hx-get="/c/create-bucket-dialog" hx-target="body" hx-swap="beforeend">{{template "Icon" "plus"}}<span class="sr-only">Create</span></button>
+            </th>
+        </tr>
+    {{template "EndTableHeader"}}
+    {{template "BeginTableBody"}}
+        {{range .Buckets}}
+            {{template "BeginTableRow"}}
+                <td hx-boost="true" class="p-2 w-1 align-middle whitespace-nowrap">
+                    <a href="/u/buckets/{{.Name}}/objects">{{.Name}}</a>
+                </td>
+                <td class="text-right">{{.Objects}}</td>
+                <td class="text-right">{{.Size}}</td>
+                <td class="p-2 flex w-full justify-end align-middle">
+                    {{template "DeleteBucketButton" .Name}}
+                </td>
+            {{template "EndTableRow"}}
+        {{end}}
+    {{template "EndTableBody"}}
+{{template "EndTable"}}
+{{end}}
+ 

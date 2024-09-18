@@ -1,0 +1,21 @@
+{{define "LoginForm"}}
+    <form hx-post="/login" hx-swap="outerHTML">
+        <div class="grid gap-6">
+            <label for="email" class="sr-only">Email</label>
+            <input
+                type="email"
+                id="email"
+                name="email"
+                placeholder="Email"
+                class="{{template "cnInput"}}"
+                required
+                autocomplete="username"
+                value="{{.Email}}"
+                />
+            <label for="password" class="sr-only">Password</label>
+            <input type="password" id="password" name="password" placeholder="Password" class="{{template "cnInput"}}" required autocomplete="current-password">
+            {{with .ErrorMessage}}<div class="text-red-400">{{.}}</div>{{end}}
+            <button type="submit" class="{{template "cnPrimaryButton"}}">Login</button>
+        </div>
+    </form>
+{{end}}

@@ -1,0 +1,23 @@
+{{define "BootstrapForm"}}
+<form hx-post="/bootstrap" hx-swap="outerHTML">
+    <div class="grid gap-6">
+        <label for="email" class="sr-only">Email</label>
+        <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="Email"
+            class="{{template "cnInput"}}"
+            required
+            autocomplete="username"
+            value="{{.Email}}"
+            />
+        <label for="password" class="sr-only">Password</label>
+        <input type="password" id="password" name="password" placeholder="Password" class="{{template "cnInput"}}" required autocomplete="new-password">
+        <label for="passwordConfirmation" class="sr-only">Confirm Password</label>
+        <input type="password" id="passwordConfirmation" name="passwordConfirmation" placeholder="Repeat Password" class="{{template "cnInput"}}" required autocomplete="new-password">
+        {{with .ErrorMessage}}<div class="text-red-400">{{.}}</div>{{end}}
+        <button type="submit" class="{{template "cnPrimaryButton"}}">Create admin account</button>
+    </div>
+</form>
+{{end}}

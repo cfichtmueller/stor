@@ -1,0 +1,23 @@
+{{define "CreateBucketDialog"}}
+<form hx-post="/r/bucket" hx-swap="delete" id="create-bucket-dialog">
+    {{template "DialogBackdrop"}}
+    <div role="dialog"
+         class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg"
+        tabindex="-1" style="pointer-events: auto;">
+            {{template "BeginDialogTitle"}}Create Bucket{{template "EndDialogTitle"}}
+            <div class="grid gap-4 py-4">
+                <div class="grid grid-cols-4 items-center gap-4">
+                    <label for="bucketName" class="{{template "cnLabel"}} text-right">Name</label>
+                    <input id="bucketName" name="name" class="{{template "cnInput"}} col-span-3" required />
+                </div>
+            </div>
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
+                <button class="{{template "cnPrimaryButton"}}" type="submit" >Create</button>
+            </div>
+            <button type="button" class="{{template "cnDialogCloseButton"}}" data-remove="create-bucket-dialog">
+                {{template "DialogCloseIcon"}}
+                <span class="sr-only">Close</span>
+            </button>
+    </div>
+</form>
+{{end}}

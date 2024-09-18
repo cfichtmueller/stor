@@ -1,0 +1,8 @@
+{{define "cnButton"}}inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 h-8 rounded-md px-3 text-xs{{end}}
+{{define "cnButtonDefault"}}bg-primary text-primary-foreground shadow hover:bg-primary/90{{end}}
+{{define "cnButtonSecondary"}}bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80{{end}}
+{{define "cnButtonDanger"}}bg-danger text-danger-foreground shadow-sm hover:bg-danger/80{{end}}
+
+{{define "cnPrimaryButton"}}{{template "cnButton"}} {{template "cnButtonDefault"}}{{end}}
+{{define "cnSecondaryButton"}}{{template "cnButton"}} {{template "cnButtonSecondary"}}{{end}}
+{{define "cnDangerButton"}}{{template "cnButton"}} {{template "cnButtonDanger"}}{{end}}
