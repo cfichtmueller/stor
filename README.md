@@ -14,6 +14,18 @@ The project is very new and still working towards the 1.0.0 release.
 
 Then open [http://localhost:8001](http://localhost:8001) to access the console. The buckets are accessible via [http://localhost:8000](http://localhost:8000)
 
+## Configuration
+
+Configuration is done through the environment.
+
+```bash
+DATA_DIR=/var/stor     # optional
+API_HOST=127.0.0.1     # optional - defaults to empty (bind all)
+API_PORT=8000          # optional
+CONSOLE_HOST=127.0.0.1 # optional - defaults to empty (bind all)
+CONSOLE_PORT=8001      # optional
+```
+
 ## Contribute to STOR
 
 This project currently doesn't accept contributions.

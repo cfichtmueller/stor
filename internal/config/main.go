@@ -10,8 +10,20 @@ import (
 )
 
 var (
-	DataDir string
+	DataDir     string
+	ApiHost     string
+	ApiPort     string
+	ConsoleHost string
+	ConsolePort string
 )
+
+func init() {
+	DataDir = getEnv("DATA_DIR", "/var/stor")
+	ApiHost = os.Getenv("API_HOST")
+	ApiPort = getEnv("API_PORT", "8000")
+	ConsoleHost = os.Getenv("CONSOLE_HOST")
+	ConsolePort = getEnv("CONSOLE_PORT", "8001")
+}
 
 func Mkdir(name string) error {
 	if err := os.Mkdir(path.Join(DataDir, name), 0700); err != nil {
@@ -20,4 +32,12 @@ func Mkdir(name string) error {
 		}
 	}
 	return nil
+}
+
+func getEnv(key, fallback string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	return v
 }

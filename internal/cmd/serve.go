@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cfichtmueller/stor/internal/api"
+	"github.com/cfichtmueller/stor/internal/config"
 	"github.com/cfichtmueller/stor/internal/console"
 	"github.com/cfichtmueller/stor/internal/shell"
 	"github.com/spf13/cobra"
@@ -18,9 +19,7 @@ import (
 )
 
 var (
-	g           errgroup.Group
-	apiAddr     = "127.0.0.1:8000"
-	consoleAddr = "127.0.0.1:8001"
+	g errgroup.Group
 )
 
 var serveCmd = &cobra.Command{
@@ -29,6 +28,9 @@ var serveCmd = &cobra.Command{
 		shell.Configure()
 		apiEngine := api.Configure()
 		consoleEngine := console.Configure()
+
+		apiAddr := config.ApiHost + ":" + config.ApiPort
+		consoleAddr := config.ConsoleHost + ":" + config.ConsolePort
 
 		engineServer := newServer(apiAddr, apiEngine)
 		consoleServer := newServer(consoleAddr, consoleEngine)

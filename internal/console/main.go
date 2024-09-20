@@ -12,7 +12,7 @@ import (
 )
 
 func Configure() jug.Engine {
-	console := jug.New()
+	console := jug.Default()
 
 	console.GET("/css/style.css", func(c jug.Context) {
 		ui.RenderCss(c, "style.css")

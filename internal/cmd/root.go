@@ -5,7 +5,6 @@
 package cmd
 
 import (
-	"github.com/cfichtmueller/stor/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +13,6 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&config.DataDir, "data", "d", "/var/stor", "location of the data directory")
 	rootCmd.AddCommand(serveCmd)
 }
 

@@ -28,4 +28,4 @@ EXPOSE 8001/tcp
 COPY --from=build /stor/stor /usr/bin/stor
 
 ENTRYPOINT [ "/usr/bin/stor" ]
-CMD [ "serve", "-d", "/var/data" ]
+CMD [ "serve" ]

@@ -10,7 +10,7 @@ import (
 
 func Configure() jug.Engine {
 
-	engine := jug.New()
+	engine := jug.Default()
 
 	bucketGroup := engine.Group("/:bucketName", authenticatedFilter, bucketFilter)
 	bucketGroup.GET("", handleListObjects)
