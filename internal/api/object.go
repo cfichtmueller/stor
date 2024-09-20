@@ -32,10 +32,18 @@ func newObjectResponse(o *object.Object) ObjectResponse {
 }
 
 func handleListObjects(c jug.Context) {
-	b := contextGetBucket(c)
-	o, err := object.List(c, b.Name)
+	startAfter := c.Query("start-after")
+	limit, err := c.DefaultIntQuery("limit", 1000)
 	if err != nil {
-		log.Printf("Error: %v", err)
+		c.HandleError(err)
+		return
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+	b := contextGetBucket(c)
+	o, err := object.List(c, b.Name, startAfter, limit)
+	if err != nil {
 		c.HandleError(err)
 		return
 	}

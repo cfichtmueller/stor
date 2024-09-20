@@ -38,7 +38,7 @@ type Object struct {
 var (
 	ErrNotFound      = jug.NewNotFoundError("object not found")
 	createStmt       *sql.Stmt
-	findManyStmt     *sql.Stmt
+	listStmt         *sql.Stmt
 	findOneStmt      *sql.Stmt
 	existsStmt       *sql.Stmt
 	deleteStmt       *sql.Stmt
@@ -71,7 +71,7 @@ func Configure() {
 
 	s := db.Prepare(
 		"INSERT INTO objects (id, bucket, key, content_type, size, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
-		"SELECT id, bucket, key, content_type, size, created_at FROM objects WHERE bucket = $1 ORDER BY key",
+		"SELECT id, bucket, key, content_type, size, created_at FROM objects WHERE bucket = $1 AND key > $2 ORDER BY key LIMIT $3",
 		"SELECT id, bucket, key, content_type, size, created_at FROM objects WHERE bucket = $1 AND key = $2 LIMIT 1",
 		"SELECT COUNT(*) as count FROM objects WHERE bucket = $1 AND key = $2",
 		"DELETE FROM objects WHERE id = $1",
@@ -81,7 +81,7 @@ func Configure() {
 	)
 
 	createStmt = s[0]
-	findManyStmt = s[1]
+	listStmt = s[1]
 	findOneStmt = s[2]
 	existsStmt = s[3]
 	deleteStmt = s[4]
@@ -90,8 +90,8 @@ func Configure() {
 	deleteChunksStmt = s[7]
 }
 
-func List(ctx context.Context, bucketName string) ([]*Object, error) {
-	return decodeRows(findManyStmt.QueryContext(ctx, bucketName))
+func List(ctx context.Context, bucketName, startAfter string, limit int) ([]*Object, error) {
+	return decodeRows(listStmt.QueryContext(ctx, bucketName, startAfter, limit))
 }
 
 func decodeRows(rows *sql.Rows, err error) ([]*Object, error) {

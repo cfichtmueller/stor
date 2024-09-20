@@ -56,7 +56,7 @@ func handleBucketPage(c jug.Context) {
 
 func handleBucketObjectsPage(c jug.Context) {
 	b := contextGetBucket(c)
-	objects, err := object.List(c, b.Name)
+	objects, err := object.List(c, b.Name, "", 1000)
 	if !must("find objects", c, err) {
 		return
 	}
