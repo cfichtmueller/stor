@@ -27,9 +27,9 @@ func (c *Cache) Get(key string) (any, bool) {
 		return nil, false
 	}
 	if v.expires.IsZero() || v.expires.After(time.Now()) {
-		delete(c.index, key)
 		return v.value, true
 	}
+	delete(c.index, key)
 	return nil, false
 }
 
