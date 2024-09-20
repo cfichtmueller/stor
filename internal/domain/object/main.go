@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cfichtmueller/jug"
@@ -132,6 +134,31 @@ func FindOne(ctx context.Context, bucketName, key string) (*Object, error) {
 		return nil, fmt.Errorf("unable to find object record: %v", err)
 	}
 	return &o, nil
+}
+
+func FindMany(ctx context.Context, bucketName string, keys []string) ([]*Object, error) {
+	query := strings.Builder{}
+	query.WriteString("SELECT id, bucket, key, content_type, size, created_at FROM objects WHERE bucket = $1 AND key IN (")
+	first := true
+	for i := range keys {
+		if first {
+			first = false
+		} else {
+			query.WriteString(", ")
+		}
+		query.WriteString("$" + strconv.Itoa(i+2))
+	}
+	query.WriteString(")")
+	stmt, err := db.PrepareOne(query.String())
+	if err != nil {
+		return nil, err
+	}
+	args := make([]any, 0, len(keys)+1)
+	args = append(args, bucketName)
+	for _, k := range keys {
+		args = append(args, k)
+	}
+	return decodeRows(stmt.QueryContext(ctx, args...))
 }
 
 func Exists(ctx context.Context, bucketName, key string) (bool, error) {

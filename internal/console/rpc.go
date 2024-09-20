@@ -9,7 +9,7 @@ import (
 
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
-	"github.com/cfichtmueller/stor/internal/domain/bucket"
+	"github.com/cfichtmueller/stor/internal/uc"
 	"github.com/cfichtmueller/stor/internal/ui"
 )
 
@@ -72,9 +72,12 @@ func handleRpcCreateBucket(c jug.Context) {
 	values := c.Request().Form
 	name := values.Get("name")
 
-	bucket.Create(c, bucket.CreateCommand{
-		Name: name,
-	})
+	if _, err := uc.CreateBucket(c, name); err != nil {
+		hxTrigger(c, hxTriggerModel{
+			Toast: newToast("Error", "Failed to create bucket: %v", err),
+		})
+		return
+	}
 
 	hxTrigger(c, hxTriggerModel{
 		Event: "bucketsUpdated",

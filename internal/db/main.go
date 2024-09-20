@@ -54,6 +54,10 @@ func Prepare(statements ...string) []*sql.Stmt {
 	return result
 }
 
+func PrepareOne(query string) (*sql.Stmt, error) {
+	return db.Prepare(query)
+}
+
 func RunMigration(id, statement string) {
 	ctx := context.Background()
 	var count int

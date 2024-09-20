@@ -12,9 +12,11 @@ func Configure() jug.Engine {
 
 	engine := jug.Default()
 
-	bucketGroup := engine.Group("/:bucketName", authenticatedFilter, bucketFilter)
-	bucketGroup.GET("", handleListObjects)
-	objectGroup := bucketGroup.Group("/*objectKey")
+	bucketGroup := engine.Group("/:bucketName", authenticatedFilter)
+	bucketGroup.POST("", bucketFilter, handleBucketPost)
+	bucketGroup.PUT("", handleCreateBucket)
+	bucketGroup.GET("", bucketFilter, handleListObjects)
+	objectGroup := bucketGroup.Group("/*objectKey", bucketFilter)
 	objectGroup.GET("", objectFilter, handleGetObject)
 	objectGroup.PUT("", handleCreateObject)
 	objectGroup.DELETE("", objectFilter, handleDeleteObject)
