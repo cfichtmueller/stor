@@ -51,7 +51,7 @@ func handleCreateObject(c jug.Context) {
 	}
 	d, err := c.GetRawData()
 	if err != nil {
-		c.HandleError(err)
+		handleError(c, err)
 		return
 	}
 
@@ -60,8 +60,7 @@ func handleCreateObject(c jug.Context) {
 		ContentType: contentType,
 		Data:        d,
 	}); err != nil {
-		log.Printf("unable to create object: %v", err)
-		c.HandleError(err)
+		handleError(c, err)
 		return
 	}
 
@@ -73,7 +72,7 @@ func handleDeleteObject(c jug.Context) {
 	o := contextGetObject(c)
 
 	if err := uc.DeleteObject(c, b, o); err != nil {
-		c.HandleError(err)
+		handleError(c, err)
 		return
 	}
 

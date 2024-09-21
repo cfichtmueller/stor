@@ -40,7 +40,7 @@ func handleDeleteObjects(c jug.Context) {
 	objectKeys := util.MapMany(req.Objects, func(r ObjectReference) string { return r.Key })
 	objects, err := object.FindMany(c, b.Name, objectKeys)
 	if err != nil {
-		handleError(c, ec.Internal(err))
+		handleError(c, ec.Wrap(err))
 		return
 	}
 	deletedCount := 0
@@ -51,8 +51,7 @@ func handleDeleteObjects(c jug.Context) {
 			Key: o.Key,
 		}
 		if err := object.Delete(c, o); err != nil {
-			//TODO: all errors should have a code
-			res.Error = ec.Internal(err)
+			res.Error = ec.Wrap(err)
 		} else {
 			res.Deleted = true
 			deletedCount += 1

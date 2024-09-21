@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/db"
 	"github.com/cfichtmueller/stor/internal/domain"
+	"github.com/cfichtmueller/stor/internal/ec"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -29,7 +29,7 @@ type User struct {
 
 func (u *User) SetPassword(pw string) error {
 	if len(pw) < 8 || len(pw) > 70 {
-		return ErrInvalidPassword
+		return ec.InvalidArgument
 	}
 	b, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
 	if err != nil {
@@ -52,16 +52,11 @@ type CreateCommand struct {
 }
 
 var (
-	ErrNotFound           = jug.NewNotFoundError("user not found")
-	ErrExists             = jug.NewConflictError("user exists")
-	ErrInvalidPassword    = jug.NewBadRequestError("invalid password")
-	ErrInvalidCredentials = jug.NewUnauthorizedError("invalid credentials")
-	ErrAccoundDisabled    = jug.NewUnauthorizedError("account is disabled")
-	createStmt            *sql.Stmt
-	listStmt              *sql.Stmt
-	findStmt              *sql.Stmt
-	getStmt               *sql.Stmt
-	updateStmt            *sql.Stmt
+	createStmt *sql.Stmt
+	listStmt   *sql.Stmt
+	findStmt   *sql.Stmt
+	getStmt    *sql.Stmt
+	updateStmt *sql.Stmt
 )
 
 func Configure() {
@@ -96,7 +91,7 @@ func Create(ctx context.Context, cmd CreateCommand) (*User, error) {
 		return nil, err
 	}
 	if existing != nil {
-		return nil, ErrExists
+		return nil, ec.UserAlreadyExists
 	}
 
 	u := &User{
@@ -153,7 +148,7 @@ func Get(ctx context.Context, id string) (*User, error) {
 		return nil, err
 	}
 	if u == nil {
-		return nil, ErrNotFound
+		return nil, ec.NoSuchUser
 	}
 	return u, nil
 }
@@ -178,15 +173,15 @@ func Login(ctx context.Context, email, password string) (*User, error) {
 		return nil, err
 	}
 	if u == nil {
-		return nil, ErrInvalidCredentials
+		return nil, ec.InvalidCredentials
 	}
 
 	if !u.PasswordMatches(password) {
-		return nil, ErrInvalidCredentials
+		return nil, ec.InvalidCredentials
 	}
 
 	if !u.Enabled {
-		return nil, ErrAccoundDisabled
+		return nil, ec.AccountDisabled
 	}
 
 	return u, nil

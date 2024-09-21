@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/db"
 	"github.com/cfichtmueller/stor/internal/domain"
+	"github.com/cfichtmueller/stor/internal/ec"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -40,14 +40,12 @@ type CreateCommand struct {
 }
 
 var (
-	ErrInvalidCredentials = jug.NewUnauthorizedError("invalid credentials")
-	ErrNotFound           = jug.NewNotFoundError("api key not found")
-	createStmt            *sql.Stmt
-	listStmt              *sql.Stmt
-	findStmt              *sql.Stmt
-	getStmt               *sql.Stmt
-	updateStmt            *sql.Stmt
-	deleteStmt            *sql.Stmt
+	createStmt *sql.Stmt
+	listStmt   *sql.Stmt
+	findStmt   *sql.Stmt
+	getStmt    *sql.Stmt
+	updateStmt *sql.Stmt
+	deleteStmt *sql.Stmt
 )
 
 func Configure() {
@@ -141,7 +139,7 @@ func List(ctx context.Context) ([]*ApiKey, error) {
 
 func Authenticate(ctx context.Context, key string) (*ApiKey, error) {
 	if len(key) != 64 {
-		return nil, ErrInvalidCredentials
+		return nil, ec.InvalidCredentials
 	}
 	prefix := key[:10]
 
@@ -156,17 +154,17 @@ func Authenticate(ctx context.Context, key string) (*ApiKey, error) {
 		&k.ExpiresAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrInvalidCredentials
+			return nil, ec.InvalidCredentials
 		}
 		return nil, fmt.Errorf("unable to find api key: %v", err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword(k.hash, []byte(key)); err != nil {
-		return nil, ErrInvalidCredentials
+		return nil, ec.InvalidCredentials
 	}
 
 	if k.ExpiresAt.Before(time.Now()) {
-		return nil, ErrInvalidCredentials
+		return nil, ec.InvalidCredentials
 	}
 
 	return &k, nil
@@ -184,7 +182,7 @@ func Get(ctx context.Context, id string) (*ApiKey, error) {
 		&k.ExpiresAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, ec.NoSuchApiKey
 		}
 		return nil, fmt.Errorf("unable to find api key: %v", err)
 	}

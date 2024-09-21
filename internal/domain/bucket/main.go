@@ -12,8 +12,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/db"
+	"github.com/cfichtmueller/stor/internal/ec"
 )
 
 type CreateCommand struct {
@@ -42,7 +42,6 @@ type Filter struct {
 }
 
 var (
-	ErrNotFound       = jug.NewNotFoundError("bucket not found")
 	bucketNamePattern = regexp.MustCompile("^[a-z0-9](?:[a-z0-9.-]?[a-z0-9]+){2,}$")
 	createStmt        *sql.Stmt
 	findManyStmt      *sql.Stmt
@@ -84,7 +83,7 @@ func GetStats(ctx context.Context) (Stats, error) {
 
 func Create(ctx context.Context, cmd CreateCommand) (*Bucket, error) {
 	if !bucketNamePattern.MatchString(cmd.Name) || cmd.Name == "api" || cmd.Name == "css" || cmd.Name == "img" {
-		return nil, jug.NewBadRequestError("invalid name")
+		return nil, ec.InvalidArgument
 	}
 	b := &Bucket{
 		Name:      cmd.Name,
@@ -136,7 +135,7 @@ func FindOne(ctx context.Context, name string) (*Bucket, error) {
 			&b.CreatedAt,
 		); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, ec.NoSuchBucket
 		}
 		return nil, fmt.Errorf("unable to read db result: %v", err)
 	}

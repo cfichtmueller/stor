@@ -15,11 +15,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/config"
 	"github.com/cfichtmueller/stor/internal/db"
 	"github.com/cfichtmueller/stor/internal/domain"
 	"github.com/cfichtmueller/stor/internal/domain/chunk"
+	"github.com/cfichtmueller/stor/internal/ec"
 )
 
 type CreateCommand struct {
@@ -38,7 +38,6 @@ type Object struct {
 }
 
 var (
-	ErrNotFound      = jug.NewNotFoundError("object not found")
 	createStmt       *sql.Stmt
 	listStmt         *sql.Stmt
 	findOneStmt      *sql.Stmt
@@ -140,7 +139,7 @@ func FindOne(ctx context.Context, bucketName, key string) (*Object, error) {
 		&o.CreatedAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, ec.NoSuchKey
 		}
 		return nil, fmt.Errorf("unable to find object record: %v", err)
 	}

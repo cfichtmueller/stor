@@ -57,7 +57,7 @@ func handleCreateBucket(c jug.Context) {
 
 	b, err := uc.CreateBucket(c, name)
 	if err != nil {
-		c.HandleError(err)
+		handleError(c, err)
 		return
 	}
 

@@ -27,7 +27,7 @@ func handleListObjects(c jug.Context) {
 	startAfter := c.Query("start-after")
 	maxKeys, err := c.DefaultIntQuery("max-keys", 1000)
 	if err != nil {
-		c.HandleError(err)
+		handleError(c, err)
 		return
 	}
 	if maxKeys > 1000 {
@@ -64,13 +64,13 @@ func handleListObjects(c jug.Context) {
 
 	contents, err := object.List(c, b.Name, startAfter, maxKeys)
 	if err != nil {
-		c.HandleError(err)
+		handleError(c, err)
 		return
 	}
 	keyCount := len(contents)
 	totalKeys, err := object.Count(c, b.Name, startAfter)
 	if err != nil {
-		c.HandleError(err)
+		handleError(c, err)
 		return
 	}
 	var startAfterRes *string

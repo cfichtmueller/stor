@@ -5,7 +5,16 @@
 package ec
 
 var (
-	NoSuchKey = &Error{StatusCode: 404, Code: "NoSuchKey", Message: "The specified key does not exist"}
+	AccountDisabled     = &Error{StatusCode: 401, Code: "AccountDisabled", Message: "The user account is disabled"}
+	BucketAlreadyExists = &Error{StatusCode: 409, Code: "BucketAlreadyExists", Message: "The requested bucket name is not available"}
+	InvalidArgument     = &Error{StatusCode: 400, Code: "InvalidArgument", Message: "Invalid argument"}
+	InvalidCredentials  = &Error{StatusCode: 401, Code: "InvalidCredentials", Message: "Invalid Credentials"}
+	NoSuchApiKey        = &Error{StatusCode: 404, Code: "NoSuchApiKey", Message: "The specified api key does not exist"}
+	NoSuchBucket        = &Error{StatusCode: 404, Code: "NoSuchBucket", Message: "The specified bucket does not exist"}
+	NoSuchKey           = &Error{StatusCode: 404, Code: "NoSuchKey", Message: "The specified key does not exist"}
+	NoSuchUser          = &Error{StatusCode: 404, Code: "NoSuchUser", Message: "The specified user does not exist"}
+	Unauthorized        = &Error{StatusCode: 401, Code: "Unauthorized", Message: "Unauthorized"}
+	UserAlreadyExists   = &Error{StatusCode: 409, Code: "UserAlreadyExists", Message: "The requested user name is not available"}
 )
 
 type Error struct {
@@ -24,4 +33,11 @@ func Internal(e error) *Error {
 		Code:       "InternalError",
 		Message:    e.Error(),
 	}
+}
+
+func Wrap(e error) *Error {
+	if ee, ok := e.(*Error); ok {
+		return ee
+	}
+	return Internal(e)
 }

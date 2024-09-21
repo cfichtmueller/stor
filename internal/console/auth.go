@@ -9,7 +9,7 @@ import (
 
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/session"
-	"github.com/cfichtmueller/stor/internal/domain/user"
+	"github.com/cfichtmueller/stor/internal/ec"
 	"github.com/cfichtmueller/stor/internal/uc"
 	"github.com/cfichtmueller/stor/internal/ui"
 )
@@ -59,12 +59,12 @@ func handleLogin(c jug.Context) {
 	}
 	_, sid, err := uc.Login(c, cmd)
 	if err != nil {
-		if errors.Is(err, user.ErrInvalidCredentials) {
+		if errors.Is(err, ec.InvalidCredentials) {
 			ui.RenderLoginForm(c.Writer(), ui.LoginFormModel{
 				Email:        cmd.Email,
 				ErrorMessage: "Invalid Credentials",
 			})
-		} else if errors.Is(err, user.ErrAccoundDisabled) {
+		} else if errors.Is(err, ec.AccountDisabled) {
 			ui.RenderLoginForm(c.Writer(), ui.LoginFormModel{ErrorMessage: "Account is disabled"})
 		} else {
 			c.HandleError(err)

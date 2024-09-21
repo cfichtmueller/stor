@@ -12,25 +12,25 @@ import (
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/object"
+	"github.com/cfichtmueller/stor/internal/ec"
 	"github.com/cfichtmueller/stor/internal/util"
 )
 
 var (
-	ErrUnauthorized = jug.NewUnauthorizedError("Unauthorized")
-	tokenCache      = util.NewCache()
-	tokenTTL        = time.Minute
+	tokenCache = util.NewCache()
+	tokenTTL   = time.Minute
 )
 
 func bucketFilter(c jug.Context) {
 	name := c.Param("bucketName")
 	if len(name) < 3 {
-		c.HandleError(bucket.ErrNotFound)
+		handleError(c, ec.NoSuchBucket)
 		c.Abort()
 		return
 	}
 	b, err := bucket.FindOne(c, name)
 	if err != nil {
-		c.HandleError(err)
+		handleError(c, err)
 		c.Abort()
 		return
 	}
@@ -43,7 +43,7 @@ func objectFilter(c jug.Context) {
 
 	o, err := object.FindOne(c, b.Name, key)
 	if err != nil {
-		c.HandleError(err)
+		handleError(c, err)
 		c.Abort()
 		return
 	}
@@ -54,7 +54,7 @@ func objectFilter(c jug.Context) {
 func authenticatedFilter(c jug.Context) {
 	auth := c.GetHeader("Authorization")
 	if !strings.HasPrefix(auth, "Bearer ") {
-		c.HandleError(ErrUnauthorized)
+		handleError(c, ec.Unauthorized)
 		c.Abort()
 		return
 	}
@@ -66,7 +66,7 @@ func authenticatedFilter(c jug.Context) {
 	}
 	key, err := apikey.Authenticate(c, token)
 	if err != nil {
-		c.HandleError(err)
+		handleError(c, err)
 		c.Abort()
 		return
 	}
