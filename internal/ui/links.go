@@ -13,14 +13,16 @@ const (
 )
 
 type bucketLinks struct {
-	Objects  string
-	Settings string
+	Objects    string
+	Properties string
+	Settings   string
 }
 
 func newBucketLinks(bucketName string) bucketLinks {
 	base := bucketsLink + "/" + bucketName
 	return bucketLinks{
-		Objects:  base + "/objects",
-		Settings: base + "/settings",
+		Objects:    base + "/objects",
+		Properties: base + "/properties",
+		Settings:   base + "/settings",
 	}
 }

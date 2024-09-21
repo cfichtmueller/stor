@@ -63,6 +63,11 @@ func handleBucketObjectsPage(c jug.Context) {
 	must("render bucket objects page", c, ui.RenderBucketObjectsPage(c.Writer(), b, objects))
 }
 
+func handleBucketPropertiesPage(c jug.Context) {
+	b := contextGetBucket(c)
+	must("render bucket properties page", c, ui.RenderBucketPropertiesPage(c.Writer(), b))
+}
+
 func handleBucketSettingsPage(c jug.Context) {
 	b := contextGetBucket(c)
 	must("render bucket settings page", c, ui.RenderBucketSettingsPage(c.Writer(), b))

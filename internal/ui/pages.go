@@ -8,7 +8,6 @@ import (
 	"io"
 
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
-	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/util"
 )
 
@@ -43,11 +42,13 @@ func newBucketModel(b *bucket.Bucket) bucketModel {
 }
 
 type bucketPageModel struct {
-	Bucket     bucketModel
-	AppSidebar SidebarModel
-	PageHeader pageHeaderModel
-	NavTabs    NavTabsModel
-	Objects    []objectModel
+	AppSidebar  SidebarModel
+	PageHeader  pageHeaderModel
+	PageTitle   string
+	Breadcrumbs BreadcrumbsModel
+	NavTabs     NavTabsModel
+	Bucket      bucketModel
+	Objects     []objectModel
 }
 
 func newBucketPageModel(b *bucket.Bucket, active string) bucketPageModel {
@@ -58,6 +59,13 @@ func newBucketPageModel(b *bucket.Bucket, active string) bucketPageModel {
 			Title:     "Buckets",
 			CloseLink: bucketsLink,
 		},
+		Breadcrumbs: BreadcrumbsModel{
+			Crumbs: []BreadcrumbModel{
+				{Title: "Buckets", Link: "/u/buckets"},
+				{Separator: true},
+				{Title: b.Name},
+			},
+		},
 		NavTabs: NavTabsModel{
 			Tabs: []NavLink{
 				{
@@ -65,6 +73,12 @@ func newBucketPageModel(b *bucket.Bucket, active string) bucketPageModel {
 					Active: active == "objects",
 					Title:  "Objects",
 					Icon:   "files",
+				},
+				{
+					Active: active == "properties",
+					Link:   links.Properties,
+					Title:  "Properties",
+					Icon:   "sliders-horizontal",
 				},
 				{
 					Link:   links.Settings,
@@ -76,18 +90,4 @@ func newBucketPageModel(b *bucket.Bucket, active string) bucketPageModel {
 		},
 		Bucket: newBucketModel(b),
 	}
-}
-
-func RenderBucketPage(w io.Writer, b *bucket.Bucket) error {
-	return renderTemplate(w, "BucketPage", newBucketPageModel(b, "files"))
-}
-
-func RenderBucketObjectsPage(w io.Writer, b *bucket.Bucket, objects []*object.Object) error {
-	m := newBucketPageModel(b, "objects")
-	m.Objects = util.MapMany(objects, newObjectModel)
-	return renderTemplate(w, "BucketObjectsPage", m)
-}
-
-func RenderBucketSettingsPage(w io.Writer, b *bucket.Bucket) error {
-	return renderTemplate(w, "BucketSettingsPage", newBucketPageModel(b, "settings"))
 }

@@ -1,5 +1,13 @@
 {{define "BucketObjectsPage"}}
-{{template "BeginBucketPageLayout" .}}
-{{template "ObjectsTable" .}}
-{{template "EndBucketPageLayout" .}}
+{{template "BeginLoggedInLayout" .}}
+    {{template "Breadcrumbs" .Breadcrumbs}}
+    {{template "PageTitle" .PageTitle}}
+    <div class="flex flex-col w-full border rounded-md bg-white">
+        {{template "NavTabs" .NavTabs}}
+        <div class="p-2">
+            {{template "ObjectsTable" .}}
+        </div>
+    </div>
+</div>
+{{template "EndLoggedInLayout"}}
 {{end}}
