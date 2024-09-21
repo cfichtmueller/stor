@@ -10,6 +10,7 @@ import (
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/object"
+	"github.com/cfichtmueller/stor/internal/ec"
 	"github.com/cfichtmueller/stor/internal/util"
 )
 
@@ -39,7 +40,7 @@ func handleDeleteObjects(c jug.Context) {
 	objectKeys := util.MapMany(req.Objects, func(r ObjectReference) string { return r.Key })
 	objects, err := object.FindMany(c, b.Name, objectKeys)
 	if err != nil {
-		handleError(c, internalError(err))
+		handleError(c, ec.Internal(err))
 		return
 	}
 	deletedCount := 0
@@ -51,7 +52,7 @@ func handleDeleteObjects(c jug.Context) {
 		}
 		if err := object.Delete(c, o); err != nil {
 			//TODO: all errors should have a code
-			res.Error = internalError(err)
+			res.Error = ec.Internal(err)
 		} else {
 			res.Deleted = true
 			deletedCount += 1
@@ -64,7 +65,7 @@ func handleDeleteObjects(c jug.Context) {
 			index[o.Key] = &DeleteResult{
 				Key:     o.Key,
 				Deleted: false,
-				Error:   ErrNoSuchKey,
+				Error:   ec.NoSuchKey,
 			}
 		}
 	}

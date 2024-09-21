@@ -9,6 +9,7 @@ import (
 
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
+	"github.com/cfichtmueller/stor/internal/ec"
 	"github.com/cfichtmueller/stor/internal/uc"
 )
 
@@ -37,9 +38,9 @@ type DeleteResults struct {
 }
 
 type DeleteResult struct {
-	Key     string `json:"key"`
-	Deleted bool   `json:"deleted"`
-	Error   *Error `json:"error,omitempty"`
+	Key     string    `json:"key"`
+	Deleted bool      `json:"deleted"`
+	Error   *ec.Error `json:"error,omitempty"`
 }
 
 func handleBucketPost(c jug.Context) {

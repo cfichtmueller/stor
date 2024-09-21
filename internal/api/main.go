@@ -5,7 +5,10 @@
 package api
 
 import (
+	"encoding/json"
+
 	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/stor/internal/ec"
 )
 
 func Configure() jug.Engine {
@@ -22,4 +25,22 @@ func Configure() jug.Engine {
 	objectGroup.DELETE("", objectFilter, handleDeleteObject)
 
 	return engine
+}
+
+func handleError(ctx jug.Context, err error) {
+	e, ok := err.(*ec.Error)
+	if !ok {
+		ctx.HandleError(err)
+		ctx.Abort()
+		return
+	}
+
+	b, err := json.Marshal(e)
+	if err != nil {
+		ctx.HandleError(err)
+		ctx.Abort()
+		return
+	}
+
+	ctx.Data(e.StatusCode, "application/json", b)
 }
