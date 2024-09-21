@@ -47,6 +47,7 @@ var (
 	addChunkStmt     *sql.Stmt
 	findChunksStmt   *sql.Stmt
 	deleteChunksStmt *sql.Stmt
+	countStmt        *sql.Stmt
 )
 
 func Configure() {
@@ -80,6 +81,7 @@ func Configure() {
 		"INSERT INTO object_chunks (object, chunk, seq) VALUES ($1, $2, $3)",
 		"SELECT chunk FROM object_chunks WHERE object = $1 ORDER BY seq",
 		"DELETE FROM object_chunks WHERE object = $1",
+		"SELECT COUNT(*) FROM objects WHERE bucket = $1 AND key > $2",
 	)
 
 	createStmt = s[0]
@@ -90,10 +92,19 @@ func Configure() {
 	addChunkStmt = s[5]
 	findChunksStmt = s[6]
 	deleteChunksStmt = s[7]
+	countStmt = s[8]
 }
 
 func List(ctx context.Context, bucketName, startAfter string, limit int) ([]*Object, error) {
 	return decodeRows(listStmt.QueryContext(ctx, bucketName, startAfter, limit))
+}
+
+func Count(ctx context.Context, bucketName, startAfter string) (int, error) {
+	var count int
+	if err := countStmt.QueryRowContext(ctx, bucketName, startAfter).Scan(&count); err != nil {
+		return 0, fmt.Errorf("unable to count objects: %v", err)
+	}
+	return count, nil
 }
 
 func decodeRows(rows *sql.Rows, err error) ([]*Object, error) {

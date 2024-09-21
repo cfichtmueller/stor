@@ -12,7 +12,6 @@ import (
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/uc"
-	"github.com/cfichtmueller/stor/internal/util"
 )
 
 type ObjectResponse struct {
@@ -29,25 +28,6 @@ func newObjectResponse(o *object.Object) ObjectResponse {
 		Size:        o.Size,
 		CreatedAt:   o.CreatedAt,
 	}
-}
-
-func handleListObjects(c jug.Context) {
-	startAfter := c.Query("start-after")
-	limit, err := c.DefaultIntQuery("limit", 1000)
-	if err != nil {
-		c.HandleError(err)
-		return
-	}
-	if limit > 1000 {
-		limit = 1000
-	}
-	b := contextGetBucket(c)
-	o, err := object.List(c, b.Name, startAfter, limit)
-	if err != nil {
-		c.HandleError(err)
-		return
-	}
-	c.RespondOk(util.MapMany(o, newObjectResponse))
 }
 
 func handleGetObject(c jug.Context) {
