@@ -15,6 +15,7 @@ func Configure() jug.Engine {
 
 	engine := jug.Default()
 
+	engine.GET("", authenticatedFilter, handleListBuckets)
 	bucketGroup := engine.Group("/:bucketName", authenticatedFilter)
 	bucketGroup.POST("", bucketFilter, handleBucketPost)
 	bucketGroup.PUT("", handleCreateBucket)

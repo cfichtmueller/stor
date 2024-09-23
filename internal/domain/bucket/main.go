@@ -48,6 +48,8 @@ var (
 	findOneStmt       *sql.Stmt
 	updateStmt        *sql.Stmt
 	statsStmt         *sql.Stmt
+	listStmt          *sql.Stmt
+	countStmt         *sql.Stmt
 )
 
 func Configure() {
@@ -65,12 +67,16 @@ func Configure() {
 		"SELECT name, objects, size, created_at FROM buckets WHERE name = $1 LIMIT 1",
 		"UPDATE buckets SET objects = $1, size = $2 WHERE name = $3",
 		"SELECT COUNT(*) AS count, TOTAL(objects) AS objects from buckets",
+		"SELECT name, objects, size, created_at FROM buckets WHERE name > $1 ORDER BY name LIMIT $2",
+		"SELECT COUNT(*) FROM buckets WHERE name > $1",
 	)
 	createStmt = s[0]
 	findManyStmt = s[1]
 	findOneStmt = s[2]
 	updateStmt = s[3]
 	statsStmt = s[4]
+	listStmt = s[5]
+	countStmt = s[6]
 }
 
 func GetStats(ctx context.Context) (Stats, error) {
@@ -97,32 +103,12 @@ func Create(ctx context.Context, cmd CreateCommand) (*Bucket, error) {
 	return b, nil
 }
 
-func FindMany(ctx context.Context, filter *Filter) ([]*Bucket, error) {
-	rows, err := findManyStmt.QueryContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	buckets := make([]*Bucket, 0)
-	for rows.Next() {
-		var b Bucket
-		if err := rows.Scan(
-			&b.Name,
-			&b.Objects,
-			&b.Size,
-			&b.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		buckets = append(buckets, &b)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
+func List(ctx context.Context, startAfter string, maxBuckets int) ([]*Bucket, error) {
+	return decodeRows(listStmt.QueryContext(ctx, startAfter, maxBuckets))
+}
 
-	return buckets, nil
+func FindMany(ctx context.Context, filter *Filter) ([]*Bucket, error) {
+	return decodeRows(findManyStmt.QueryContext(ctx))
 }
 
 func FindOne(ctx context.Context, name string) (*Bucket, error) {
@@ -142,9 +128,43 @@ func FindOne(ctx context.Context, name string) (*Bucket, error) {
 	return &b, nil
 }
 
+func Count(ctx context.Context, startAfter string) (int, error) {
+	var count int
+	if err := countStmt.QueryRowContext(ctx, startAfter).Scan(&count); err != nil {
+		return 0, fmt.Errorf("unable to query bucket count: %v", err)
+	}
+	return count, nil
+}
+
 func Save(ctx context.Context, b *Bucket) error {
 	if _, err := updateStmt.ExecContext(ctx, b.Objects, b.Size, b.Name); err != nil {
 		return fmt.Errorf("unable to save bucket: %v", err)
 	}
 	return nil
+}
+
+func decodeRows(rows *sql.Rows, err error) ([]*Bucket, error) {
+	if err != nil {
+		return nil, fmt.Errorf("unable to query buckets: %v", err)
+	}
+	buckets := make([]*Bucket, 0)
+	for rows.Next() {
+		var b Bucket
+		if err := rows.Scan(
+			&b.Name,
+			&b.Objects,
+			&b.Size,
+			&b.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("unable to scan row: %v", err)
+		}
+		buckets = append(buckets, &b)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, fmt.Errorf("unable to close rows: %v", err)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row error: %v", err)
+	}
+	return buckets, nil
 }
