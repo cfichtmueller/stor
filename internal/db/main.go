@@ -41,7 +41,7 @@ func Configure() {
 func Prepare(statement string) *sql.Stmt {
 	s, err := db.Prepare(statement)
 	if err != nil {
-		log.Fatalf("unable to prepare statement '%s': %v", s, err)
+		log.Fatalf("unable to prepare statement '%s': %v", statement, err)
 	}
 	return s
 }

@@ -39,16 +39,20 @@ type Object struct {
 }
 
 var (
+	maxPurgeTime = 400 * time.Millisecond
+
 	createStmt             *sql.Stmt
 	listStmt               *sql.Stmt
 	findOneStmt            *sql.Stmt
 	existsStmt             *sql.Stmt
 	updateStmt             *sql.Stmt
 	deleteStmt             *sql.Stmt
+	findDeletedStmt        *sql.Stmt
 	addObjectChunkStmt     *sql.Stmt
 	findObjectChunksStmt   *sql.Stmt
 	deleteObjectChunksStmt *sql.Stmt
 	countStmt              *sql.Stmt
+	purgeFlag              = true
 )
 
 func Configure() {
@@ -83,10 +87,13 @@ func Configure() {
 	existsStmt = db.Prepare("SELECT COUNT(*) as count FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3")
 	updateStmt = db.Prepare("UPDATE objects SET is_deleted = $1 WHERE id = $2")
 	deleteStmt = db.Prepare("DELETE FROM objects WHERE id = $1")
+	findDeletedStmt = db.Prepare("SELECT id FROM objects WHERE is_deleted = true LIMIT 1000")
 	addObjectChunkStmt = db.Prepare("INSERT INTO object_chunks (object, chunk, seq) VALUES ($1, $2, $3)")
 	findObjectChunksStmt = db.Prepare("SELECT chunk FROM object_chunks WHERE object = $1 ORDER BY seq")
 	deleteObjectChunksStmt = db.Prepare("DELETE FROM object_chunks WHERE object = $1")
 	countStmt = db.Prepare("SELECT COUNT(*) FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted  = $3")
+
+	go worker()
 }
 
 func List(ctx context.Context, bucketName, startAfter string, limit int) ([]*Object, error) {
@@ -214,11 +221,7 @@ func Delete(ctx context.Context, o *Object) error {
 		return fmt.Errorf("unable to update object record: %v", err)
 	}
 
-	go func(objectId string) {
-		if err := purgeObject(context.Background(), objectId); err != nil {
-			log.Printf("unable to purge object %s: %v", objectId, err)
-		}
-	}(o.ID)
+	purgeFlag = true
 
 	return nil
 }
@@ -238,6 +241,52 @@ func findObjectChunks(ctx context.Context, objectId string) ([]string, error) {
 		ids = append(ids, chunkId)
 	}
 	return ids, nil
+}
+
+func worker() {
+	ticker := time.NewTicker(time.Second)
+	for {
+		<-ticker.C
+		purgeObjects()
+	}
+}
+
+func purgeObjects() {
+	if !purgeFlag {
+		return
+	}
+	start := time.Now()
+	ctx := context.Background()
+	rows, err := findDeletedStmt.QueryContext(ctx)
+	if err != nil {
+		log.Printf("unable to purge objects: %v", err)
+		return
+	}
+	ids := make([]string, 0)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			log.Printf("unable to purge objects: %v", err)
+			return
+		}
+		ids = append(ids, id)
+	}
+	for i, id := range ids {
+		if err := purgeObject(ctx, id); err != nil {
+			log.Printf("unable to purge objects: %v", err)
+			return
+		}
+		if time.Since(start) > maxPurgeTime {
+			if i > 1 {
+				log.Printf("purged %d objects", i-1)
+			}
+			return
+		}
+	}
+	if len(ids) > 0 {
+		log.Printf("purged %d objects", len(ids))
+	}
+	purgeFlag = false
 }
 
 func purgeObject(ctx context.Context, objectId string) error {
