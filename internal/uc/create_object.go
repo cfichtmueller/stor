@@ -12,24 +12,25 @@ import (
 	"github.com/cfichtmueller/stor/internal/domain/object"
 )
 
-func CreateObject(ctx context.Context, b *bucket.Bucket, cmd object.CreateCommand) error {
+func CreateObject(ctx context.Context, b *bucket.Bucket, cmd object.CreateCommand) (*object.Object, error) {
 	exists, err := object.Exists(ctx, b.Name, cmd.Key)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if exists {
-		return jug.NewConflictError("object exists")
+		return nil, jug.NewConflictError("object exists")
 	}
 
-	if err := object.Create(ctx, b.Name, cmd); err != nil {
-		return err
+	o, err := object.Create(ctx, b.Name, cmd)
+	if err != nil {
+		return nil, err
 	}
 
 	b.AddObject(uint64(len(cmd.Data)))
 
 	if err := bucket.Save(ctx, b); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return o, nil
 }

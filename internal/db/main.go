@@ -51,6 +51,14 @@ func PrepareOne(query string) (*sql.Stmt, error) {
 }
 
 func RunMigration(id, statement string) {
+	RunMigrationF(id, func() error {
+		ctx := context.Background()
+		_, err := db.ExecContext(ctx, statement)
+		return err
+	})
+}
+
+func RunMigrationF(id string, f func() error) {
 	ctx := context.Background()
 	var count int
 	if err := findMigrationStmt.QueryRowContext(ctx, id).Scan(&count); err != nil {
@@ -59,7 +67,7 @@ func RunMigration(id, statement string) {
 	if count > 0 {
 		return
 	}
-	if _, err := db.ExecContext(ctx, statement); err != nil {
+	if err := f(); err != nil {
 		log.Fatalf("unable to run migration %s: %v", id, err)
 	}
 	if _, err := insertMigrationStmt.Exec(id, time.Now()); err != nil {

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/cfichtmueller/jug"
-	"github.com/cfichtmueller/stor/internal/domain"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/uc"
 )
@@ -18,6 +17,7 @@ import (
 type ObjectResponse struct {
 	Key         string    `json:"key"`
 	ContentType string    `json:"contentType"`
+	ETag        string    `json:"etag"`
 	Size        uint64    `json:"size"`
 	CreatedAt   time.Time `json:"createdAt"`
 }
@@ -27,6 +27,7 @@ func newObjectResponse(o *object.Object) ObjectResponse {
 		Key:         o.Key,
 		ContentType: o.ContentType,
 		Size:        o.Size,
+		ETag:        o.ETag,
 		CreatedAt:   o.CreatedAt,
 	}
 }
@@ -91,18 +92,18 @@ func handleCreateObject(c jug.Context) {
 		return
 	}
 
-	if err := uc.CreateObject(c, b, object.CreateCommand{
+	o, err := uc.CreateObject(c, b, object.CreateCommand{
 		Key:         key,
 		ContentType: contentType,
 		Data:        d,
-	}); err != nil {
+	})
+	if err != nil {
 		handleError(c, err)
 		return
 	}
 
 	c.Status(204)
-	//TODO set actual etag on object
-	c.SetHeader("ETag", domain.RandomId())
+	c.SetHeader("ETag", o.ETag)
 }
 
 func handleDeleteObject(c jug.Context) {

@@ -7,6 +7,7 @@ package domain
 import "github.com/cfichtmueller/stor/internal/util"
 
 const idAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const etagAlphabet = "abcdef0123456789"
 
 func RandomId() string {
 	return util.RandomStringFromAlphabet(idAlphabet, 10)
@@ -14,4 +15,8 @@ func RandomId() string {
 
 func NewId(length int) string {
 	return util.RandomStringFromAlphabet(idAlphabet, length)
+}
+
+func NewEtag() string {
+	return util.RandomStringFromAlphabet(etagAlphabet, 64)
 }

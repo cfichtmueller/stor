@@ -32,6 +32,7 @@ type Object struct {
 	ID          string
 	Bucket      string
 	Key         string
+	ETag        string
 	ContentType string
 	Size        uint64
 	CreatedAt   time.Time
@@ -80,10 +81,11 @@ func Configure() {
 	db.RunMigration("add_object_deleted_flag", `ALTER TABLE objects ADD COLUMN is_deleted INTEGER`)
 	db.RunMigration("add_object_key_index", `CREATE INDEX idx_objects_key_bucket_deleted ON objects (key, bucket, is_deleted)`)
 	db.RunMigration("add_objectchunk_key_index", `CREATE INDEX idx_objectchunk_key ON object_chunks (object)`)
+	db.RunMigration("add_object_etag_1", `ALTER TABLE objects ADD COLUMN etag CHAR(64)`)
 
-	createStmt = db.Prepare("INSERT INTO objects (id, bucket, key, content_type, size, created_at, is_deleted) VALUES ($1, $2, $3, $4, $5, $6, false)")
-	listStmt = db.Prepare("SELECT id, bucket, key, content_type, size, created_at, is_deleted FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted = $3 ORDER BY key LIMIT $4")
-	findOneStmt = db.Prepare("SELECT id, bucket, key, content_type, size, created_at, is_deleted FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3 LIMIT 1")
+	createStmt = db.Prepare("INSERT INTO objects (id, bucket, key, etag, content_type, size, created_at, is_deleted) VALUES ($1, $2, $3, $4, $5, $6, $7, false)")
+	listStmt = db.Prepare("SELECT id, bucket, key, etag, content_type, size, created_at, is_deleted FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted = $3 ORDER BY key LIMIT $4")
+	findOneStmt = db.Prepare("SELECT id, bucket, key, etag, content_type, size, created_at, is_deleted FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3 LIMIT 1")
 	existsStmt = db.Prepare("SELECT COUNT(*) as count FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3")
 	updateStmt = db.Prepare("UPDATE objects SET is_deleted = $1 WHERE id = $2")
 	deleteStmt = db.Prepare("DELETE FROM objects WHERE id = $1")
@@ -119,6 +121,7 @@ func decodeRows(rows *sql.Rows, err error) ([]*Object, error) {
 			&o.ID,
 			&o.Bucket,
 			&o.Key,
+			&o.ETag,
 			&o.ContentType,
 			&o.Size,
 			&o.CreatedAt,
@@ -137,6 +140,7 @@ func FindOne(ctx context.Context, bucketName, key string, deleted bool) (*Object
 		&o.ID,
 		&o.Bucket,
 		&o.Key,
+		&o.ETag,
 		&o.ContentType,
 		&o.Size,
 		&o.CreatedAt,
@@ -184,22 +188,31 @@ func Exists(ctx context.Context, bucketName, key string) (bool, error) {
 	return count > 0, nil
 }
 
-func Create(ctx context.Context, bucketId string, cmd CreateCommand) error {
-	objectId := domain.RandomId()
+func Create(ctx context.Context, bucketId string, cmd CreateCommand) (*Object, error) {
 	chunkId, err := chunk.Create(ctx, cmd.Data)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if _, err := createStmt.ExecContext(ctx, objectId, bucketId, cmd.Key, cmd.ContentType, len(cmd.Data), time.Now()); err != nil {
-		return fmt.Errorf("unable to persist object record: %v", err)
+	o := Object{
+		ID:          domain.RandomId(),
+		Bucket:      bucketId,
+		Key:         cmd.Key,
+		ETag:        domain.NewEtag(),
+		ContentType: cmd.ContentType,
+		Size:        uint64(len(cmd.Data)),
+		CreatedAt:   time.Now(),
 	}
 
-	if _, err := addObjectChunkStmt.ExecContext(ctx, objectId, chunkId, 1); err != nil {
-		return fmt.Errorf("unable to persist object chunk record: %v", err)
+	if _, err := createStmt.ExecContext(ctx, &o.ID, &o.Bucket, &o.Key, &o.ETag, &o.ContentType, &o.Size, &o.CreatedAt); err != nil {
+		return nil, fmt.Errorf("unable to persist object record: %v", err)
 	}
 
-	return nil
+	if _, err := addObjectChunkStmt.ExecContext(ctx, o.ID, chunkId, 1); err != nil {
+		return nil, fmt.Errorf("unable to persist object chunk record: %v", err)
+	}
+
+	return &o, nil
 }
 
 func Write(ctx context.Context, o *Object, w io.Writer) error {
