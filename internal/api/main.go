@@ -23,8 +23,9 @@ func Configure() jug.Engine {
 	bucketGroup.DELETE("", bucketFilter, handleDeleteBucket)
 	objectGroup := bucketGroup.Group("/*objectKey", bucketFilter)
 	objectGroup.GET("", objectFilter, handleGetObject)
-	objectGroup.PUT("", handleCreateObject)
-	objectGroup.DELETE("", objectFilter, handleDeleteObject)
+	objectGroup.POST("", handleObjectPost)
+	objectGroup.PUT("", handleObjectPut)
+	objectGroup.DELETE("", objectFilter, handleObjectDelete)
 
 	return engine
 }

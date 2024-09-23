@@ -41,6 +41,32 @@ func handleGetObject(c jug.Context) {
 	}
 }
 
+func handleObjectPost(c jug.Context) {
+	if c.Request().URL.Query().Has(queryUploads) {
+		handleCreateMultipartUpload(c)
+	} else if c.Query(queryUploadId) != "" {
+		handleCompleteMultipartUpload(c)
+	} else {
+		c.Status(405)
+	}
+}
+
+func handleObjectPut(c jug.Context) {
+	if c.Query(queryUploadId) != "" {
+		handleUploadPart(c)
+	} else {
+		handleCreateObject(c)
+	}
+}
+
+func handleObjectDelete(c jug.Context) {
+	if c.Query(queryUploadId) != "" {
+		handleAbortMultipartUpload(c)
+	} else {
+		handleDeleteObject(c)
+	}
+}
+
 func handleCreateObject(c jug.Context) {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
