@@ -38,15 +38,15 @@ type Object struct {
 }
 
 var (
-	createStmt       *sql.Stmt
-	listStmt         *sql.Stmt
-	findOneStmt      *sql.Stmt
-	existsStmt       *sql.Stmt
-	deleteStmt       *sql.Stmt
-	addChunkStmt     *sql.Stmt
-	findChunksStmt   *sql.Stmt
-	deleteChunksStmt *sql.Stmt
-	countStmt        *sql.Stmt
+	createStmt             *sql.Stmt
+	listStmt               *sql.Stmt
+	findOneStmt            *sql.Stmt
+	existsStmt             *sql.Stmt
+	deleteStmt             *sql.Stmt
+	addObjectChunkStmt     *sql.Stmt
+	findObjectChunksStmt   *sql.Stmt
+	deleteObjectChunksStmt *sql.Stmt
+	countStmt              *sql.Stmt
 )
 
 func Configure() {
@@ -88,9 +88,9 @@ func Configure() {
 	findOneStmt = s[2]
 	existsStmt = s[3]
 	deleteStmt = s[4]
-	addChunkStmt = s[5]
-	findChunksStmt = s[6]
-	deleteChunksStmt = s[7]
+	addObjectChunkStmt = s[5]
+	findObjectChunksStmt = s[6]
+	deleteObjectChunksStmt = s[7]
 	countStmt = s[8]
 }
 
@@ -190,7 +190,7 @@ func Create(ctx context.Context, bucketId string, cmd CreateCommand) error {
 		return fmt.Errorf("unable to persist object record: %v", err)
 	}
 
-	if _, err := addChunkStmt.ExecContext(ctx, objectId, chunkId, 1); err != nil {
+	if _, err := addObjectChunkStmt.ExecContext(ctx, objectId, chunkId, 1); err != nil {
 		return fmt.Errorf("unable to persist object chunk record: %v", err)
 	}
 
@@ -198,7 +198,7 @@ func Create(ctx context.Context, bucketId string, cmd CreateCommand) error {
 }
 
 func Write(ctx context.Context, o *Object, w io.Writer) error {
-	chunkIds, err := findChunks(ctx, o.ID)
+	chunkIds, err := findObjectChunks(ctx, o.ID)
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func Write(ctx context.Context, o *Object, w io.Writer) error {
 }
 
 func Delete(ctx context.Context, o *Object) error {
-	chunkIds, err := findChunks(ctx, o.ID)
+	chunkIds, err := findObjectChunks(ctx, o.ID)
 	if err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func Delete(ctx context.Context, o *Object) error {
 		}
 	}
 
-	if _, err := deleteChunksStmt.ExecContext(ctx, o.ID); err != nil {
+	if _, err := deleteObjectChunksStmt.ExecContext(ctx, o.ID); err != nil {
 		return fmt.Errorf("unable to delete chunk links: %v", err)
 	}
 
@@ -232,9 +232,9 @@ func Delete(ctx context.Context, o *Object) error {
 	return nil
 }
 
-func findChunks(ctx context.Context, objectId string) ([]string, error) {
+func findObjectChunks(ctx context.Context, objectId string) ([]string, error) {
 	//TODO: when the number of chunks becomes large, this needs to "cursor" its way through
-	rows, err := findChunksStmt.QueryContext(ctx, objectId)
+	rows, err := findObjectChunksStmt.QueryContext(ctx, objectId)
 	if err != nil {
 		return nil, fmt.Errorf("unable to find chunks: %v", err)
 	}
