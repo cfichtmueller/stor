@@ -79,4 +79,6 @@ func handleDeleteBucket(c jug.Context) {
 	}
 
 	bucket.Delete(c, b.Name)
+
+	c.RespondNoContent()
 }
