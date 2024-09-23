@@ -7,6 +7,7 @@ package ec
 var (
 	AccountDisabled     = &Error{StatusCode: 401, Code: "AccountDisabled", Message: "The user account is disabled"}
 	BucketAlreadyExists = &Error{StatusCode: 409, Code: "BucketAlreadyExists", Message: "The requested bucket name is not available"}
+	BucketNotEmpty      = &Error{StatusCode: 409, Code: "BucketNotEmpty", Message: "The bucket is not empty"}
 	InvalidArgument     = &Error{StatusCode: 400, Code: "InvalidArgument", Message: "Invalid argument"}
 	InvalidCredentials  = &Error{StatusCode: 401, Code: "InvalidCredentials", Message: "Invalid Credentials"}
 	NoSuchApiKey        = &Error{StatusCode: 404, Code: "NoSuchApiKey", Message: "The specified api key does not exist"}

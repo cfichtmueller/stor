@@ -50,6 +50,7 @@ var (
 	statsStmt         *sql.Stmt
 	listStmt          *sql.Stmt
 	countStmt         *sql.Stmt
+	deleteStmt        *sql.Stmt
 )
 
 func Configure() {
@@ -68,6 +69,7 @@ func Configure() {
 	statsStmt = db.Prepare("SELECT COUNT(*) AS count, TOTAL(objects) AS objects from buckets")
 	listStmt = db.Prepare("SELECT name, objects, size, created_at FROM buckets WHERE name > $1 ORDER BY name LIMIT $2")
 	countStmt = db.Prepare("SELECT COUNT(*) FROM buckets WHERE name > $1")
+	deleteStmt = db.Prepare("DELETE FROM buckets WHERE name = $1")
 }
 
 func GetStats(ctx context.Context) (Stats, error) {
@@ -130,6 +132,13 @@ func Count(ctx context.Context, startAfter string) (int, error) {
 func Save(ctx context.Context, b *Bucket) error {
 	if _, err := updateStmt.ExecContext(ctx, b.Objects, b.Size, b.Name); err != nil {
 		return fmt.Errorf("unable to save bucket: %v", err)
+	}
+	return nil
+}
+
+func Delete(ctx context.Context, name string) error {
+	if _, err := deleteStmt.ExecContext(ctx, name); err != nil {
+		return fmt.Errorf("unable to delete bucket: %v", err)
 	}
 	return nil
 }

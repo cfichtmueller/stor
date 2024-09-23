@@ -9,6 +9,7 @@ import (
 
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
+	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/ec"
 	"github.com/cfichtmueller/stor/internal/uc"
 )
@@ -62,4 +63,20 @@ func handleCreateBucket(c jug.Context) {
 	}
 
 	c.RespondCreated(newBucketResponse(b))
+}
+
+func handleDeleteBucket(c jug.Context) {
+	b := contextGetBucket(c)
+
+	count, err := object.Count(c, b.Name, "")
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	if count > 0 {
+		handleError(c, ec.BucketNotEmpty)
+		return
+	}
+
+	bucket.Delete(c, b.Name)
 }
