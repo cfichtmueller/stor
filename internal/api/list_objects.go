@@ -15,7 +15,7 @@ import (
 
 type ListObjectsResponse struct {
 	IsTruncated    bool             `json:"isTruncated"`
-	Contents       []ObjectResponse `json:"contents"`
+	Objects        []ObjectResponse `json:"objects"`
 	Name           string           `json:"name"`
 	MaxKeys        int              `json:"maxKeys"`
 	KeyCount       int              `json:"keyCount"`
@@ -52,7 +52,7 @@ func handleListObjects(c jug.Context) {
 		}
 		c.RespondOk(ListObjectsResponse{
 			IsTruncated:    s.truncated,
-			Contents:       util.MapMany(s.objects, newObjectResponse),
+			Objects:        util.MapMany(s.objects, newObjectResponse),
 			Name:           b.Name,
 			MaxKeys:        maxKeys,
 			KeyCount:       len(s.objects),
@@ -80,7 +80,7 @@ func handleListObjects(c jug.Context) {
 
 	c.RespondOk(ListObjectsResponse{
 		IsTruncated: totalKeys > keyCount,
-		Contents:    util.MapMany(contents, newObjectResponse),
+		Objects:     util.MapMany(contents, newObjectResponse),
 		Name:        b.Name,
 		MaxKeys:     maxKeys,
 		KeyCount:    keyCount,
