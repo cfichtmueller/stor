@@ -5,6 +5,8 @@
 package api
 
 var (
+	queryArchiveId  = "archive-id"
+	queryArchives   = "archives"
 	queryPartNumber = "part-number"
 	queryUploadId   = "upload-id"
 	queryUploads    = "uploads"

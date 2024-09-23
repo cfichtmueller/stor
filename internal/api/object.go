@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/stor/internal/domain"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/uc"
 )
@@ -42,9 +43,14 @@ func handleGetObject(c jug.Context) {
 }
 
 func handleObjectPost(c jug.Context) {
-	if c.Request().URL.Query().Has(queryUploads) {
+	query := c.Request().URL.Query()
+	if query.Has(queryArchives) {
+		handleCreateArchive(c)
+	} else if query.Get(queryArchiveId) != "" {
+		handleCompleteArchive(c)
+	} else if query.Has(queryUploads) {
 		handleCreateMultipartUpload(c)
-	} else if c.Query(queryUploadId) != "" {
+	} else if query.Get(queryUploadId) != "" {
 		handleCompleteMultipartUpload(c)
 	} else {
 		c.Status(405)
@@ -52,7 +58,9 @@ func handleObjectPost(c jug.Context) {
 }
 
 func handleObjectPut(c jug.Context) {
-	if c.Query(queryUploadId) != "" {
+	if c.Query(queryArchiveId) != "" {
+		handleAddArchiveEntries(c)
+	} else if c.Query(queryUploadId) != "" {
 		handleUploadPart(c)
 	} else {
 		handleCreateObject(c)
@@ -60,7 +68,9 @@ func handleObjectPut(c jug.Context) {
 }
 
 func handleObjectDelete(c jug.Context) {
-	if c.Query(queryUploadId) != "" {
+	if c.Query(queryArchiveId) != "" {
+		handleAbortArchive(c)
+	} else if c.Query(queryUploadId) != "" {
 		handleAbortMultipartUpload(c)
 	} else {
 		handleDeleteObject(c)
@@ -90,7 +100,9 @@ func handleCreateObject(c jug.Context) {
 		return
 	}
 
-	c.RespondNoContent()
+	c.Status(204)
+	//TODO set actual etag on object
+	c.SetHeader("ETag", domain.RandomId())
 }
 
 func handleDeleteObject(c jug.Context) {
