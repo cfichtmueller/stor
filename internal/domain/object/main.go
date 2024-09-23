@@ -35,6 +35,7 @@ type Object struct {
 	ContentType string
 	Size        uint64
 	CreatedAt   time.Time
+	Deleted     bool
 }
 
 var (
@@ -42,6 +43,7 @@ var (
 	listStmt               *sql.Stmt
 	findOneStmt            *sql.Stmt
 	existsStmt             *sql.Stmt
+	updateStmt             *sql.Stmt
 	deleteStmt             *sql.Stmt
 	addObjectChunkStmt     *sql.Stmt
 	findObjectChunksStmt   *sql.Stmt
@@ -71,36 +73,29 @@ func Configure() {
 		PRIMARY KEY (object, chunk, seq)
 	)`)
 
-	s := db.Prepare(
-		"INSERT INTO objects (id, bucket, key, content_type, size, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
-		"SELECT id, bucket, key, content_type, size, created_at FROM objects WHERE bucket = $1 AND key > $2 ORDER BY key LIMIT $3",
-		"SELECT id, bucket, key, content_type, size, created_at FROM objects WHERE bucket = $1 AND key = $2 LIMIT 1",
-		"SELECT COUNT(*) as count FROM objects WHERE bucket = $1 AND key = $2",
-		"DELETE FROM objects WHERE id = $1",
-		"INSERT INTO object_chunks (object, chunk, seq) VALUES ($1, $2, $3)",
-		"SELECT chunk FROM object_chunks WHERE object = $1 ORDER BY seq",
-		"DELETE FROM object_chunks WHERE object = $1",
-		"SELECT COUNT(*) FROM objects WHERE bucket = $1 AND key > $2",
-	)
+	db.RunMigration("add_object_deleted_flag", `ALTER TABLE objects ADD COLUMN is_deleted INTEGER`)
+	db.RunMigration("add_object_key_index", `CREATE INDEX idx_objects_key_bucket_deleted ON objects (key, bucket, is_deleted)`)
+	db.RunMigration("add_objectchunk_key_index", `CREATE INDEX idx_objectchunk_key ON object_chunks (object)`)
 
-	createStmt = s[0]
-	listStmt = s[1]
-	findOneStmt = s[2]
-	existsStmt = s[3]
-	deleteStmt = s[4]
-	addObjectChunkStmt = s[5]
-	findObjectChunksStmt = s[6]
-	deleteObjectChunksStmt = s[7]
-	countStmt = s[8]
+	createStmt = db.Prepare("INSERT INTO objects (id, bucket, key, content_type, size, created_at, is_deleted) VALUES ($1, $2, $3, $4, $5, $6, false)")
+	listStmt = db.Prepare("SELECT id, bucket, key, content_type, size, created_at, is_deleted FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted = $3 ORDER BY key LIMIT $4")
+	findOneStmt = db.Prepare("SELECT id, bucket, key, content_type, size, created_at, is_deleted FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3 LIMIT 1")
+	existsStmt = db.Prepare("SELECT COUNT(*) as count FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3")
+	updateStmt = db.Prepare("UPDATE objects SET is_deleted = $1 WHERE id = $2")
+	deleteStmt = db.Prepare("DELETE FROM objects WHERE id = $1")
+	addObjectChunkStmt = db.Prepare("INSERT INTO object_chunks (object, chunk, seq) VALUES ($1, $2, $3)")
+	findObjectChunksStmt = db.Prepare("SELECT chunk FROM object_chunks WHERE object = $1 ORDER BY seq")
+	deleteObjectChunksStmt = db.Prepare("DELETE FROM object_chunks WHERE object = $1")
+	countStmt = db.Prepare("SELECT COUNT(*) FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted  = $3")
 }
 
 func List(ctx context.Context, bucketName, startAfter string, limit int) ([]*Object, error) {
-	return decodeRows(listStmt.QueryContext(ctx, bucketName, startAfter, limit))
+	return decodeRows(listStmt.QueryContext(ctx, bucketName, startAfter, false, limit))
 }
 
 func Count(ctx context.Context, bucketName, startAfter string) (int, error) {
 	var count int
-	if err := countStmt.QueryRowContext(ctx, bucketName, startAfter).Scan(&count); err != nil {
+	if err := countStmt.QueryRowContext(ctx, bucketName, startAfter, false).Scan(&count); err != nil {
 		return 0, fmt.Errorf("unable to count objects: %v", err)
 	}
 	return count, nil
@@ -120,6 +115,7 @@ func decodeRows(rows *sql.Rows, err error) ([]*Object, error) {
 			&o.ContentType,
 			&o.Size,
 			&o.CreatedAt,
+			&o.Deleted,
 		); err != nil {
 			return nil, fmt.Errorf("unable to decode object record: %v", err)
 		}
@@ -128,15 +124,16 @@ func decodeRows(rows *sql.Rows, err error) ([]*Object, error) {
 	return objects, nil
 }
 
-func FindOne(ctx context.Context, bucketName, key string) (*Object, error) {
+func FindOne(ctx context.Context, bucketName, key string, deleted bool) (*Object, error) {
 	var o Object
-	if err := findOneStmt.QueryRowContext(ctx, bucketName, key).Scan(
+	if err := findOneStmt.QueryRowContext(ctx, bucketName, key, deleted).Scan(
 		&o.ID,
 		&o.Bucket,
 		&o.Key,
 		&o.ContentType,
 		&o.Size,
 		&o.CreatedAt,
+		&o.Deleted,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ec.NoSuchKey
@@ -146,9 +143,9 @@ func FindOne(ctx context.Context, bucketName, key string) (*Object, error) {
 	return &o, nil
 }
 
-func FindMany(ctx context.Context, bucketName string, keys []string) ([]*Object, error) {
+func FindMany(ctx context.Context, bucketName string, keys []string, deleted bool) ([]*Object, error) {
 	query := strings.Builder{}
-	query.WriteString("SELECT id, bucket, key, content_type, size, created_at FROM objects WHERE bucket = $1 AND key IN (")
+	query.WriteString("SELECT id, bucket, key, content_type, size, created_at, is_deleted FROM objects WHERE bucket = $1 AND is_deleted = $2 AND key IN (")
 	first := true
 	for i := range keys {
 		if first {
@@ -156,15 +153,16 @@ func FindMany(ctx context.Context, bucketName string, keys []string) ([]*Object,
 		} else {
 			query.WriteString(", ")
 		}
-		query.WriteString("$" + strconv.Itoa(i+2))
+		query.WriteString("$" + strconv.Itoa(i+3))
 	}
 	query.WriteString(")")
 	stmt, err := db.PrepareOne(query.String())
 	if err != nil {
 		return nil, err
 	}
-	args := make([]any, 0, len(keys)+1)
+	args := make([]any, 0, len(keys)+3)
 	args = append(args, bucketName)
+	args = append(args, deleted)
 	for _, k := range keys {
 		args = append(args, k)
 	}
@@ -173,7 +171,7 @@ func FindMany(ctx context.Context, bucketName string, keys []string) ([]*Object,
 
 func Exists(ctx context.Context, bucketName, key string) (bool, error) {
 	var count int
-	if err := existsStmt.QueryRowContext(ctx, bucketName, key).Scan(&count); err != nil {
+	if err := existsStmt.QueryRowContext(ctx, bucketName, key, false).Scan(&count); err != nil {
 		return false, fmt.Errorf("unable to count objects: %v", err)
 	}
 	return count > 0, nil
@@ -211,23 +209,16 @@ func Write(ctx context.Context, o *Object, w io.Writer) error {
 }
 
 func Delete(ctx context.Context, o *Object) error {
-	chunkIds, err := findObjectChunks(ctx, o.ID)
-	if err != nil {
-		return err
+	o.Deleted = true
+	if _, err := updateStmt.ExecContext(ctx, true, o.ID); err != nil {
+		return fmt.Errorf("unable to update object record: %v", err)
 	}
-	for _, chunkId := range chunkIds {
-		if err := chunk.Delete(ctx, chunkId); err != nil {
-			return err
+
+	go func(objectId string) {
+		if err := purgeObject(context.Background(), objectId); err != nil {
+			log.Printf("unable to purge object %s: %v", objectId, err)
 		}
-	}
-
-	if _, err := deleteObjectChunksStmt.ExecContext(ctx, o.ID); err != nil {
-		return fmt.Errorf("unable to delete chunk links: %v", err)
-	}
-
-	if _, err := deleteStmt.ExecContext(ctx, o.ID); err != nil {
-		return fmt.Errorf("unable to delete object: %v", err)
-	}
+	}(o.ID)
 
 	return nil
 }
@@ -247,4 +238,26 @@ func findObjectChunks(ctx context.Context, objectId string) ([]string, error) {
 		ids = append(ids, chunkId)
 	}
 	return ids, nil
+}
+
+func purgeObject(ctx context.Context, objectId string) error {
+	chunkIds, err := findObjectChunks(ctx, objectId)
+	if err != nil {
+		return err
+	}
+	for _, chunkId := range chunkIds {
+		if err := chunk.Delete(ctx, chunkId); err != nil {
+			return err
+		}
+	}
+
+	if _, err := deleteObjectChunksStmt.ExecContext(ctx, objectId); err != nil {
+		return fmt.Errorf("unable to delete chunk links: %v", err)
+	}
+
+	if _, err := deleteStmt.ExecContext(ctx, objectId); err != nil {
+		return fmt.Errorf("unable to delete object: %v", err)
+	}
+
+	return nil
 }

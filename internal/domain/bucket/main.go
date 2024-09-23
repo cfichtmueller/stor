@@ -61,22 +61,13 @@ func Configure() {
 	created_by CHAR(32) NOT NULL
 	)`)
 
-	s := db.Prepare(
-		"INSERT INTO buckets (name, objects, size, created_at, created_by) VALUES ($1, $2, $3, $4, $5)",
-		"SELECT name, objects, size, created_at FROM buckets ORDER BY name ASC",
-		"SELECT name, objects, size, created_at FROM buckets WHERE name = $1 LIMIT 1",
-		"UPDATE buckets SET objects = $1, size = $2 WHERE name = $3",
-		"SELECT COUNT(*) AS count, TOTAL(objects) AS objects from buckets",
-		"SELECT name, objects, size, created_at FROM buckets WHERE name > $1 ORDER BY name LIMIT $2",
-		"SELECT COUNT(*) FROM buckets WHERE name > $1",
-	)
-	createStmt = s[0]
-	findManyStmt = s[1]
-	findOneStmt = s[2]
-	updateStmt = s[3]
-	statsStmt = s[4]
-	listStmt = s[5]
-	countStmt = s[6]
+	createStmt = db.Prepare("INSERT INTO buckets (name, objects, size, created_at, created_by) VALUES ($1, $2, $3, $4, $5)")
+	findManyStmt = db.Prepare("SELECT name, objects, size, created_at FROM buckets ORDER BY name ASC")
+	findOneStmt = db.Prepare("SELECT name, objects, size, created_at FROM buckets WHERE name = $1 LIMIT 1")
+	updateStmt = db.Prepare("UPDATE buckets SET objects = $1, size = $2 WHERE name = $3")
+	statsStmt = db.Prepare("SELECT COUNT(*) AS count, TOTAL(objects) AS objects from buckets")
+	listStmt = db.Prepare("SELECT name, objects, size, created_at FROM buckets WHERE name > $1 ORDER BY name LIMIT $2")
+	countStmt = db.Prepare("SELECT COUNT(*) FROM buckets WHERE name > $1")
 }
 
 func GetStats(ctx context.Context) (Stats, error) {

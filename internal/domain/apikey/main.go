@@ -59,21 +59,12 @@ func Configure() {
 	expires_at TIMESTAMP NOT NULL
 	)`)
 
-	s := db.Prepare(
-		"INSERT INTO api_keys (id, prefix, hash, description, created_at, created_by, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-		"SELECT * FROM api_keys ORDER BY created_at",
-		"SELECT * FROM api_keys WHERE prefix = $1 LIMIT 1",
-		"SELECT * FROM api_keys WHERE id = $1 LIMIT 1",
-		"UPDATE api_keys SET expires_at = $1 WHERE id = $2",
-		"DELETE FROM api_keys WHERE id = $1",
-	)
-
-	createStmt = s[0]
-	listStmt = s[1]
-	findStmt = s[2]
-	getStmt = s[3]
-	updateStmt = s[4]
-	deleteStmt = s[5]
+	createStmt = db.Prepare("INSERT INTO api_keys (id, prefix, hash, description, created_at, created_by, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)")
+	listStmt = db.Prepare("SELECT * FROM api_keys ORDER BY created_at")
+	findStmt = db.Prepare("SELECT * FROM api_keys WHERE prefix = $1 LIMIT 1")
+	getStmt = db.Prepare("SELECT * FROM api_keys WHERE id = $1 LIMIT 1")
+	updateStmt = db.Prepare("UPDATE api_keys SET expires_at = $1 WHERE id = $2")
+	deleteStmt = db.Prepare("DELETE FROM api_keys WHERE id = $1")
 }
 
 func Create(ctx context.Context, principal string, cmd CreateCommand) (*ApiKey, string, error) {

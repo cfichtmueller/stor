@@ -34,24 +34,16 @@ func Configure() {
 		log.Fatalf("unable to create migration table: %v", err)
 	}
 
-	s := Prepare(
-		"SELECT COUNT(*) as count FROM migrations WHERE id = $1",
-		"INSERT INTO migrations (id, executed_at) VALUES ($1, $2)",
-	)
-	findMigrationStmt = s[0]
-	insertMigrationStmt = s[1]
+	findMigrationStmt = Prepare("SELECT COUNT(*) as count FROM migrations WHERE id = $1")
+	insertMigrationStmt = Prepare("INSERT INTO migrations (id, executed_at) VALUES ($1, $2)")
 }
 
-func Prepare(statements ...string) []*sql.Stmt {
-	result := make([]*sql.Stmt, len(statements))
-	for i, s := range statements {
-		cur, err := db.Prepare(s)
-		if err != nil {
-			log.Fatalf("unable to prepare statement '%s': %v", s, err)
-		}
-		result[i] = cur
+func Prepare(statement string) *sql.Stmt {
+	s, err := db.Prepare(statement)
+	if err != nil {
+		log.Fatalf("unable to prepare statement '%s': %v", s, err)
 	}
-	return result
+	return s
 }
 
 func PrepareOne(query string) (*sql.Stmt, error) {

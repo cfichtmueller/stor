@@ -41,7 +41,7 @@ func objectFilter(c jug.Context) {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
 
-	o, err := object.FindOne(c, b.Name, key)
+	o, err := object.FindOne(c, b.Name, key, false)
 	if err != nil {
 		handleError(c, err)
 		c.Abort()

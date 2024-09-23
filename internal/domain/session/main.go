@@ -48,19 +48,11 @@ func Configure() {
 		expires_at TIMESTAMP NOT NULL
 	)`)
 
-	s := db.Prepare(
-		"INSERT INTO sessions (id, user, ip_address, created_at, last_seen_at, expires_at) VALUES ($1, $2, $3, $4, $5, $6)",
-		"SELECT * FROM sessions WHERE user = $1 ORDER BY last_seen_at DESC",
-		"SELECT * FROM sessions where id = $1 LIMIT 1",
-		"UPDATE sessions SET last_seen_at = $1, expires_at = $2 WHERE id = $3",
-		"DELETE FROM sessions WHERE id = $1",
-	)
-
-	createStmt = s[0]
-	listStmt = s[1]
-	getStmt = s[2]
-	updateStmt = s[3]
-	deleteStmt = s[4]
+	createStmt = db.Prepare("INSERT INTO sessions (id, user, ip_address, created_at, last_seen_at, expires_at) VALUES ($1, $2, $3, $4, $5, $6)")
+	listStmt = db.Prepare("SELECT * FROM sessions WHERE user = $1 ORDER BY last_seen_at DESC")
+	getStmt = db.Prepare("SELECT * FROM sessions where id = $1 LIMIT 1")
+	updateStmt = db.Prepare("UPDATE sessions SET last_seen_at = $1, expires_at = $2 WHERE id = $3")
+	deleteStmt = db.Prepare("DELETE FROM sessions WHERE id = $1")
 }
 
 func Create(ctx context.Context, user, ipAddress string) (*Session, error) {

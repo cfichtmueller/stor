@@ -56,18 +56,11 @@ func Configure() {
 		rc INT NOT NULL
 	)`)
 
-	s := db.Prepare(
-		"INSERT INTO chunks (id, size, rc) VALUES ($1, $2, $3)",
-		"SELECT id, size, rc FROM chunks WHERE id = $1",
-		"UPDATE chunks SET rc = $1 WHERE id = $2",
-		"DELETE FROM chunks WHERE id = $1",
-		"SELECT COUNT(*) AS count, TOTAL(size) as size FROM chunks",
-	)
-	createStmt = s[0]
-	findOneStmt = s[1]
-	updateStmt = s[2]
-	deleteStmt = s[3]
-	statsStmt = s[4]
+	createStmt = db.Prepare("INSERT INTO chunks (id, size, rc) VALUES ($1, $2, $3)")
+	findOneStmt = db.Prepare("SELECT id, size, rc FROM chunks WHERE id = $1")
+	updateStmt = db.Prepare("UPDATE chunks SET rc = $1 WHERE id = $2")
+	deleteStmt = db.Prepare("DELETE FROM chunks WHERE id = $1")
+	statsStmt = db.Prepare("SELECT COUNT(*) AS count, TOTAL(size) as size FROM chunks")
 }
 
 func GetStats(ctx context.Context) (Stats, error) {

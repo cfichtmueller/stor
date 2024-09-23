@@ -69,19 +69,11 @@ func Configure() {
 	last_seen_at TIMESTAMP
 	)`)
 
-	s := db.Prepare(
-		"INSERT INTO users (id, email, enabled, password_hash, created_at, last_seen_at) VALUES ($1, $2, $3, $4, $5, $6)",
-		"SELECT * FROM users ORDER BY email",
-		"SELECT * FROM users WHERE email = $1 LIMIT 1",
-		"SELECT * FROM users WHERE id = $1 LIMIT 1",
-		"UPDATE users SET email = $1, enabled = $2, password_hash = $3, last_seen_at = $3 WHERE id = $4",
-	)
-
-	createStmt = s[0]
-	listStmt = s[1]
-	findStmt = s[2]
-	getStmt = s[3]
-	updateStmt = s[4]
+	createStmt = db.Prepare("INSERT INTO users (id, email, enabled, password_hash, created_at, last_seen_at) VALUES ($1, $2, $3, $4, $5, $6)")
+	listStmt = db.Prepare("SELECT * FROM users ORDER BY email")
+	findStmt = db.Prepare("SELECT * FROM users WHERE email = $1 LIMIT 1")
+	getStmt = db.Prepare("SELECT * FROM users WHERE id = $1 LIMIT 1")
+	updateStmt = db.Prepare("UPDATE users SET email = $1, enabled = $2, password_hash = $3, last_seen_at = $3 WHERE id = $4")
 }
 
 func Create(ctx context.Context, cmd CreateCommand) (*User, error) {

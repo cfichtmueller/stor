@@ -38,7 +38,7 @@ func handleDeleteObjects(c jug.Context) {
 		return
 	}
 	objectKeys := util.MapMany(req.Objects, func(r ObjectReference) string { return r.Key })
-	objects, err := object.FindMany(c, b.Name, objectKeys)
+	objects, err := object.FindMany(c, b.Name, objectKeys, false)
 	if err != nil {
 		handleError(c, ec.Wrap(err))
 		return
