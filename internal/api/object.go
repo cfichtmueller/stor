@@ -18,7 +18,7 @@ type ObjectResponse struct {
 	Key         string    `json:"key"`
 	ContentType string    `json:"contentType"`
 	ETag        string    `json:"etag"`
-	Size        uint64    `json:"size"`
+	Size        int64     `json:"size"`
 	CreatedAt   time.Time `json:"createdAt"`
 }
 

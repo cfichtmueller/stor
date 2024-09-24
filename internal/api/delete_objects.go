@@ -43,8 +43,8 @@ func handleDeleteObjects(c jug.Context) {
 		handleError(c, ec.Wrap(err))
 		return
 	}
-	deletedCount := 0
-	var deletedSize uint64 = 0
+	var deletedCount int64 = 0
+	var deletedSize int64 = 0
 	index := make(map[string]*DeleteResult)
 	for _, o := range objects {
 		res := &DeleteResult{
@@ -74,7 +74,7 @@ func handleDeleteObjects(c jug.Context) {
 		res = append(res, *r)
 	}
 
-	b.Objects -= uint64(deletedCount)
+	b.Objects -= deletedCount
 	b.Size -= deletedSize
 	_ = bucket.Save(c, b)
 

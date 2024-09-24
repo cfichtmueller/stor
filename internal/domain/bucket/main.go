@@ -22,17 +22,17 @@ type CreateCommand struct {
 
 type Bucket struct {
 	Name      string
-	Objects   uint64
-	Size      uint64
+	Objects   int64
+	Size      int64
 	CreatedAt time.Time
 }
 
 type Stats struct {
-	Count        uint64
-	TotalObjects uint64
+	Count        int
+	TotalObjects int
 }
 
-func (b *Bucket) AddObject(size uint64) {
+func (b *Bucket) AddObject(size int64) {
 	b.Objects += 1
 	b.Size += size
 }

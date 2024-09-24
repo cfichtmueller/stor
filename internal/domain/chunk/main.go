@@ -35,6 +35,7 @@ type Stats struct {
 
 var (
 	ErrNotFound = fmt.Errorf("chunk not found")
+	tempDir     string
 	createStmt  *sql.Stmt
 	findOneStmt *sql.Stmt
 	updateStmt  *sql.Stmt
@@ -48,6 +49,11 @@ func Configure() {
 		if !errors.Is(err, os.ErrExist) {
 			log.Fatalf("unable to create chunk directory: %v", err)
 		}
+	}
+
+	tempDir = path.Join(config.DataDir, "chunk_tmp")
+	if err := os.Mkdir(tempDir, 0700); err != nil && !errors.Is(err, os.ErrExist) {
+		log.Fatalf("unable to create chunk temp directory: %v", err)
 	}
 
 	db.RunMigration("create_chunks_table", `CREATE TABLE chunks(
@@ -131,26 +137,40 @@ func Delete(ctx context.Context, id string) error {
 }
 
 func createNewChunk(ctx context.Context, id string, data []byte) error {
+	filename, err := prepareChunkFile(id)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(filename, data, 0700); err != nil {
+		return err
+	}
+
+	if err := createChunkTableRow(ctx, id, int64(len(data))); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// prepareChunkFile prepares the chunk folder and filename. The method returns the filename
+func prepareChunkFile(id string) (string, error) {
 	folder := id[:2]
 	filename := id[2:]
 
 	// create folder
 	if err := os.Mkdir(path.Join(config.DataDir, "chunks", folder), 0700); err != nil {
 		if !errors.Is(err, fs.ErrExist) {
-			return err
+			return "", err
 		}
 	}
+	return path.Join(config.DataDir, "chunks", folder, filename), nil
+}
 
-	// write file
-	if err := os.WriteFile(path.Join(config.DataDir, "chunks", folder, filename), data, 0700); err != nil {
-		return err
-	}
-
-	// write table row
-	if _, err := createStmt.ExecContext(ctx, id, len(data), 1); err != nil {
+func createChunkTableRow(ctx context.Context, id string, size int64) error {
+	if _, err := createStmt.ExecContext(ctx, id, size, 1); err != nil {
 		return fmt.Errorf("unable to persist chunk: %v", err)
 	}
-
 	return nil
 }
 

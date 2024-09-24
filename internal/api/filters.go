@@ -10,6 +10,7 @@ import (
 
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
+	"github.com/cfichtmueller/stor/internal/domain/archive"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/ec"
@@ -73,4 +74,25 @@ func authenticatedFilter(c jug.Context) {
 	principal := "apikey:" + key.ID
 	tokenCache.SetTTL(token, principal, tokenTTL)
 	c.Set("principal", principal)
+}
+
+func archiveFilter(c jug.Context) (string, bool) {
+	b := contextGetBucket(c)
+	key := contextGetObjectKey(c)
+	archiveId := c.Query(queryArchiveId)
+	if archiveId == "" {
+		handleError(c, ec.InvalidArgument)
+		return "", false
+	}
+	exists, err := archive.Exists(c, b.Name, key, archiveId)
+	if err != nil {
+		handleError(c, err)
+		return "", false
+	}
+	if !exists {
+		handleError(c, ec.NoSuchArchive)
+		c.Abort()
+		return "", false
+	}
+	return archiveId, true
 }

@@ -26,6 +26,7 @@ type CreateCommand struct {
 	Key         string
 	ContentType string
 	Data        []byte
+	Size        int64
 }
 
 type Object struct {
@@ -34,13 +35,14 @@ type Object struct {
 	Key         string
 	ETag        string
 	ContentType string
-	Size        uint64
+	Size        int64
 	CreatedAt   time.Time
 	Deleted     bool
 }
 
 var (
 	maxPurgeTime = 400 * time.Millisecond
+	objectFields = "id, bucket, key, etag, content_type, size, created_at, is_deleted"
 
 	createStmt             *sql.Stmt
 	listStmt               *sql.Stmt
@@ -83,9 +85,9 @@ func Configure() {
 	db.RunMigration("add_objectchunk_key_index", `CREATE INDEX idx_objectchunk_key ON object_chunks (object)`)
 	db.RunMigration("add_object_etag_1", `ALTER TABLE objects ADD COLUMN etag CHAR(64)`)
 
-	createStmt = db.Prepare("INSERT INTO objects (id, bucket, key, etag, content_type, size, created_at, is_deleted) VALUES ($1, $2, $3, $4, $5, $6, $7, false)")
-	listStmt = db.Prepare("SELECT id, bucket, key, etag, content_type, size, created_at, is_deleted FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted = $3 ORDER BY key LIMIT $4")
-	findOneStmt = db.Prepare("SELECT id, bucket, key, etag, content_type, size, created_at, is_deleted FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3 LIMIT 1")
+	createStmt = db.Prepare("INSERT INTO objects (" + objectFields + ") VALUES ($1, $2, $3, $4, $5, $6, $7, false)")
+	listStmt = db.Prepare("SELECT " + objectFields + " FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted = $3 ORDER BY key LIMIT $4")
+	findOneStmt = db.Prepare("SELECT " + objectFields + " FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3 LIMIT 1")
 	existsStmt = db.Prepare("SELECT COUNT(*) as count FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3")
 	updateStmt = db.Prepare("UPDATE objects SET is_deleted = $1 WHERE id = $2")
 	deleteStmt = db.Prepare("DELETE FROM objects WHERE id = $1")
@@ -95,6 +97,35 @@ func Configure() {
 	deleteObjectChunksStmt = db.Prepare("DELETE FROM object_chunks WHERE object = $1")
 	countStmt = db.Prepare("SELECT COUNT(*) FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted  = $3")
 
+	db.RunMigrationF("add_object_etags", func() error {
+		find := db.Prepare("SELECT id, key FROM objects WHERE etag IS NULL AND key > $1 ORDER BY key LIMIT 10000")
+		update := db.Prepare("UPDATE objects SET etag = $1 WHERE id = $2")
+		start := ""
+		for {
+			rows, err := find.Query(start)
+			if err != nil {
+				return err
+			}
+			ids := make([]string, 0)
+			for rows.Next() {
+				var id, key string
+				if err := rows.Scan(&id, &key); err != nil {
+					return err
+				}
+				ids = append(ids, id)
+				start = key
+			}
+			if len(ids) == 0 {
+				break
+			}
+			for _, id := range ids {
+				if _, err := update.Exec(domain.NewEtag(), id); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
 	go worker()
 }
 
@@ -156,7 +187,7 @@ func FindOne(ctx context.Context, bucketName, key string, deleted bool) (*Object
 
 func FindMany(ctx context.Context, bucketName string, keys []string, deleted bool) ([]*Object, error) {
 	query := strings.Builder{}
-	query.WriteString("SELECT id, bucket, key, content_type, size, created_at, is_deleted FROM objects WHERE bucket = $1 AND is_deleted = $2 AND key IN (")
+	query.WriteString("SELECT " + objectFields + " FROM objects WHERE bucket = $1 AND is_deleted = $2 AND key IN (")
 	first := true
 	for i := range keys {
 		if first {
@@ -194,13 +225,21 @@ func Create(ctx context.Context, bucketId string, cmd CreateCommand) (*Object, e
 		return nil, err
 	}
 
+	return CreateWithChunk(ctx, bucketId, chunkId, cmd)
+}
+
+func CreateWithChunk(ctx context.Context, bucketId, chunkId string, cmd CreateCommand) (*Object, error) {
+	size := cmd.Size
+	if size == 0 && cmd.Data != nil {
+		size = int64(len(cmd.Data))
+	}
 	o := Object{
 		ID:          domain.RandomId(),
 		Bucket:      bucketId,
 		Key:         cmd.Key,
 		ETag:        domain.NewEtag(),
 		ContentType: cmd.ContentType,
-		Size:        uint64(len(cmd.Data)),
+		Size:        size,
 		CreatedAt:   time.Now(),
 	}
 

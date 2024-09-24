@@ -31,27 +31,27 @@ func newDashboardMetricsModel(d DashboardData) dashboardMetricsModel {
 	return dashboardMetricsModel{
 		TotalSpaceCard: MetricCardModel{
 			Title: "Total Space",
-			Value: formatBytes(d.DiskInfo.Total),
+			Value: formatBytes(int64(d.DiskInfo.Total)),
 		},
 		UsedSpaceCard: MetricCardModel{
 			Title: "Used Space",
-			Value: formatBytes(d.DiskInfo.Used),
+			Value: formatBytes(int64(d.DiskInfo.Used)),
 		},
 		FreeSpaceCard: MetricCardModel{
 			Title: "Free Space",
-			Value: formatBytes(d.DiskInfo.Free),
+			Value: formatBytes(int64(d.DiskInfo.Free)),
 		},
 		StorageSpaceCard: MetricCardModel{
 			Title: "Storage Space",
-			Value: formatBytes(d.StorageSize),
+			Value: formatBytes(int64(d.StorageSize)),
 		},
 		BucketCountCard: MetricCardModel{
 			Title: "Buckets",
-			Value: formatInt(int(d.BucketStats.Count)),
+			Value: formatInt(d.BucketStats.Count),
 		},
 		ObjectCountCard: MetricCardModel{
 			Title: "Objects",
-			Value: formatInt(int(d.BucketStats.TotalObjects)),
+			Value: formatInt(d.BucketStats.TotalObjects),
 		},
 		NoBuckets: d.BucketStats.Count == 0,
 	}

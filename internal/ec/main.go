@@ -6,10 +6,12 @@ package ec
 
 var (
 	AccountDisabled     = &Error{StatusCode: 401, Code: "AccountDisabled", Message: "The user account is disabled"}
+	ArchiveNotPending   = &Error{StatusCode: 409, Code: "ArchiveNotPending", Message: "The archive is not pending"}
 	BucketAlreadyExists = &Error{StatusCode: 409, Code: "BucketAlreadyExists", Message: "The requested bucket name is not available"}
 	BucketNotEmpty      = &Error{StatusCode: 409, Code: "BucketNotEmpty", Message: "The bucket is not empty"}
 	InvalidArgument     = &Error{StatusCode: 400, Code: "InvalidArgument", Message: "Invalid argument"}
 	InvalidCredentials  = &Error{StatusCode: 401, Code: "InvalidCredentials", Message: "Invalid Credentials"}
+	NoSuchArchive       = &Error{StatusCode: 404, Code: "NoSuchArchive", Message: "The specified archive does not exist"}
 	NoSuchApiKey        = &Error{StatusCode: 404, Code: "NoSuchApiKey", Message: "The specified api key does not exist"}
 	NoSuchBucket        = &Error{StatusCode: 404, Code: "NoSuchBucket", Message: "The specified bucket does not exist"}
 	NoSuchKey           = &Error{StatusCode: 404, Code: "NoSuchKey", Message: "The specified key does not exist"}

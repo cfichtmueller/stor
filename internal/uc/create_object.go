@@ -27,7 +27,7 @@ func CreateObject(ctx context.Context, b *bucket.Bucket, cmd object.CreateComman
 		return nil, err
 	}
 
-	b.AddObject(uint64(len(cmd.Data)))
+	b.AddObject(int64(len(cmd.Data)))
 
 	if err := bucket.Save(ctx, b); err != nil {
 		return nil, err

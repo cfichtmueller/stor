@@ -11,7 +11,11 @@ import (
 )
 
 func formatInt(i int) string {
-	s := strconv.FormatInt(int64(i), 10)
+	return formatInt64(int64(i))
+}
+
+func formatInt64(i int64) string {
+	s := strconv.FormatInt(i, 10)
 	return addCommas(s)
 }
 
@@ -32,7 +36,7 @@ func addCommas(s string) string {
 	return result
 }
 
-func formatBytes(bytes uint64) string {
+func formatBytes(bytes int64) string {
 	const (
 		KB = 1024
 		MB = KB * 1024

@@ -10,6 +10,7 @@ import (
 	"github.com/cfichtmueller/stor/internal/config"
 	"github.com/cfichtmueller/stor/internal/db"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
+	"github.com/cfichtmueller/stor/internal/domain/archive"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/chunk"
 	"github.com/cfichtmueller/stor/internal/domain/object"
@@ -29,4 +30,5 @@ func Configure() {
 	chunk.Configure()
 	bucket.Configure()
 	object.Configure()
+	archive.Configure()
 }
