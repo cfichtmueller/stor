@@ -11,12 +11,16 @@ import (
 	"github.com/cfichtmueller/stor/internal/domain/object"
 )
 
-func DeleteObject(ctx context.Context, b *bucket.Bucket, o *object.Object) error {
-	if err := object.Delete(ctx, o); err != nil {
+func ReconcileBucket(ctx context.Context, b *bucket.Bucket) error {
+	s, err := object.StatsForBucket(ctx, b.Name)
+	if err != nil {
 		return err
 	}
 
-	if err := ReconcileBucket(ctx, b); err != nil {
+	b.Objects = s.ObjectCount
+	b.Size = s.TotalSize
+
+	if err := bucket.Save(ctx, b); err != nil {
 		return err
 	}
 

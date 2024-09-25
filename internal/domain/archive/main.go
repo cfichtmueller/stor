@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cfichtmueller/stor/internal/bus"
 	"github.com/cfichtmueller/stor/internal/db"
 	"github.com/cfichtmueller/stor/internal/domain"
 	"github.com/cfichtmueller/stor/internal/domain/chunk"
@@ -22,6 +23,8 @@ import (
 )
 
 var (
+	//EventCompleted indicates that an archive has been completed. Data is a CompletedEvent
+	EventCompleted       = "archive.completed"
 	StatePending         = "pending"
 	StateProcessing      = "processing"
 	StateComplete        = "complete"
@@ -40,6 +43,12 @@ var (
 	completeMutex        sync.Mutex
 	finishFlag           = true
 )
+
+type CompletedEvent struct {
+	Bucket    string
+	Key       string
+	ArchiveId string
+}
 
 func Configure() {
 	db.RunMigration("create_archive_table", `CREATE TABLE archives (
@@ -271,6 +280,13 @@ func finishArchive(ctx context.Context, arch *Archive) error {
 	deleteArchive(ctx, arch.ID)
 
 	log.Printf("Finished archive: %s", s.Summary())
+
+	bus.Publish(EventCompleted, CompletedEvent{
+		Bucket:    arch.Bucket,
+		Key:       arch.Key,
+		ArchiveId: arch.ID,
+	})
+
 	return nil
 }
 

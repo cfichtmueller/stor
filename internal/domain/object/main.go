@@ -55,6 +55,7 @@ var (
 	findObjectChunksStmt   *sql.Stmt
 	deleteObjectChunksStmt *sql.Stmt
 	countStmt              *sql.Stmt
+	statsStmt              *sql.Stmt
 	purgeFlag              = true
 )
 
@@ -96,6 +97,7 @@ func Configure() {
 	findObjectChunksStmt = db.Prepare("SELECT chunk FROM object_chunks WHERE object = $1 ORDER BY seq")
 	deleteObjectChunksStmt = db.Prepare("DELETE FROM object_chunks WHERE object = $1")
 	countStmt = db.Prepare("SELECT COUNT(*) FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted  = $3")
+	statsStmt = db.Prepare("SELECT COUNT(*), SUM(size) FROM objects WHERE bucket = $1 AND is_deleted = $2")
 
 	db.RunMigrationF("add_object_etags", func() error {
 		find := db.Prepare("SELECT id, key FROM objects WHERE etag IS NULL AND key > $1 ORDER BY key LIMIT 10000")
@@ -139,6 +141,19 @@ func Count(ctx context.Context, bucketName, startAfter string) (int, error) {
 		return 0, fmt.Errorf("unable to count objects: %v", err)
 	}
 	return count, nil
+}
+
+type Stats struct {
+	ObjectCount int64
+	TotalSize   int64
+}
+
+func StatsForBucket(ctx context.Context, bucketName string) (*Stats, error) {
+	var s Stats
+	if err := statsStmt.QueryRowContext(ctx, bucketName, false).Scan(&s.ObjectCount, &s.TotalSize); err != nil {
+		return nil, fmt.Errorf("unable to query object stats: %v", err)
+	}
+	return &s, nil
 }
 
 func decodeRows(rows *sql.Rows, err error) ([]*Object, error) {

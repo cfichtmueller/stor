@@ -7,12 +7,15 @@ package uc
 import (
 	"context"
 
+	"github.com/cfichtmueller/stor/internal/domain/archive"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
-	"github.com/cfichtmueller/stor/internal/domain/object"
 )
 
-func DeleteObject(ctx context.Context, b *bucket.Bucket, o *object.Object) error {
-	if err := object.Delete(ctx, o); err != nil {
+func onArchiveCompleted(ctx context.Context, e any) error {
+	d := e.(archive.CompletedEvent)
+
+	b, err := bucket.FindOne(ctx, d.Bucket)
+	if err != nil {
 		return err
 	}
 

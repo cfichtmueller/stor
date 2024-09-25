@@ -32,11 +32,6 @@ type Stats struct {
 	TotalObjects int
 }
 
-func (b *Bucket) AddObject(size int64) {
-	b.Objects += 1
-	b.Size += size
-}
-
 type Filter struct {
 	Name string
 }
