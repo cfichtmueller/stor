@@ -32,8 +32,20 @@ func newObjectResponse(o *object.Object) ObjectResponse {
 	}
 }
 
+func handleObjectGet(c jug.Context) {
+	query := c.Request().URL.Query()
+	if query.Has(queryArchiveId) {
+		handleGetArchive(c)
+	} else {
+		handleGetObject(c)
+	}
+}
+
 func handleGetObject(c jug.Context) {
-	o := contextGetObject(c)
+	o, ok := objectFilter(c)
+	if !ok {
+		return
+	}
 	c.Status(200)
 	c.SetHeader("Content-Length", strconv.FormatInt(int64(o.Size), 10))
 	c.SetHeader("Content-Type", o.ContentType)
@@ -107,8 +119,11 @@ func handleCreateObject(c jug.Context) {
 }
 
 func handleDeleteObject(c jug.Context) {
+	o, ok := objectFilter(c)
+	if !ok {
+		return
+	}
 	b := contextGetBucket(c)
-	o := contextGetObject(c)
 
 	if err := uc.DeleteObject(c, b, o); err != nil {
 		handleError(c, err)

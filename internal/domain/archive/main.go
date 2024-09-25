@@ -115,20 +115,29 @@ func Exists(ctx context.Context, bucket, key, id string) (bool, error) {
 	return count > 0, nil
 }
 
+func FindOne(ctx context.Context, bucket, key, id string) (*Archive, error) {
+	arch, err := scanRow(findOneStmt.QueryRowContext(ctx, id, false))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ec.NoSuchArchive
+		}
+		return nil, fmt.Errorf("unable to find archive: %v", err)
+	}
+	if arch.Bucket != bucket || arch.Key != key {
+		return nil, ec.NoSuchArchive
+	}
+	return arch, nil
+}
+
 type Entry struct {
 	Key  string `json:"key"`
 	Name string `json:"name"`
 }
 
-type AddEntriesCommand struct {
-	ArchiveId string
-	Entries   []Entry `json:"entries"`
-}
-
-func AddEntries(ctx context.Context, cmd AddEntriesCommand) error {
+func AddEntries(ctx context.Context, a *Archive, entries []Entry) error {
 	//TODO: should be bulk insert
-	for _, e := range cmd.Entries {
-		if _, err := insertEntryStmt.ExecContext(ctx, domain.RandomId(), cmd.ArchiveId, e.Key, e.Name); err != nil {
+	for _, e := range entries {
+		if _, err := insertEntryStmt.ExecContext(ctx, domain.RandomId(), a.ID, e.Key, e.Name); err != nil {
 			return fmt.Errorf("unable to insert entry record: %v", err)
 		}
 	}
@@ -141,16 +150,9 @@ type CompleteResult struct {
 	ETag   string
 }
 
-func Complete(ctx context.Context, id string) error {
+func Complete(ctx context.Context, a *Archive) error {
 	completeMutex.Lock()
 	defer completeMutex.Unlock()
-	a, err := scanRow(findOneStmt.QueryRowContext(ctx, id, false))
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ec.NoSuchArchive
-		}
-		return fmt.Errorf("unable to find archive: %v", err)
-	}
 
 	if a.State != StatePending {
 		return ec.ArchiveNotPending
@@ -235,6 +237,10 @@ func finishArchive(ctx context.Context, arch *Archive) error {
 		for _, e := range entries {
 			o, err := object.FindOne(ctx, arch.Bucket, e.Key, false)
 			if err != nil {
+				if errors.Is(err, ec.NoSuchKey) {
+					failArchive(ctx, arch.ID)
+					return nil
+				}
 				return err
 			}
 
@@ -288,6 +294,10 @@ func finishArchive(ctx context.Context, arch *Archive) error {
 	})
 
 	return nil
+}
+
+func failArchive(ctx context.Context, id string) {
+
 }
 
 func scanRow(row *sql.Row) (*Archive, error) {

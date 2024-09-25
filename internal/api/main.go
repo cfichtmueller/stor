@@ -22,10 +22,10 @@ func Configure() jug.Engine {
 	bucketGroup.GET("", bucketFilter, handleListObjects)
 	bucketGroup.DELETE("", bucketFilter, handleDeleteBucket)
 	objectGroup := bucketGroup.Group("/*objectKey", bucketFilter)
-	objectGroup.GET("", objectFilter, handleGetObject)
+	objectGroup.GET("", handleObjectGet)
 	objectGroup.POST("", handleObjectPost)
 	objectGroup.PUT("", handleObjectPut)
-	objectGroup.DELETE("", objectFilter, handleObjectDelete)
+	objectGroup.DELETE("", handleObjectDelete)
 
 	return engine
 }

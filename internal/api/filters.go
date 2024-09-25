@@ -38,18 +38,17 @@ func bucketFilter(c jug.Context) {
 	c.Set("bucket", b)
 }
 
-func objectFilter(c jug.Context) {
+func objectFilter(c jug.Context) (*object.Object, bool) {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
 
 	o, err := object.FindOne(c, b.Name, key, false)
 	if err != nil {
 		handleError(c, err)
-		c.Abort()
-		return
+		return nil, false
 	}
 
-	c.Set("object", o)
+	return o, true
 }
 
 func authenticatedFilter(c jug.Context) {
@@ -76,23 +75,18 @@ func authenticatedFilter(c jug.Context) {
 	c.Set("principal", principal)
 }
 
-func archiveFilter(c jug.Context) (string, bool) {
+func archiveFilter(c jug.Context) (*archive.Archive, bool) {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
 	archiveId := c.Query(queryArchiveId)
 	if archiveId == "" {
 		handleError(c, ec.InvalidArgument)
-		return "", false
+		return nil, false
 	}
-	exists, err := archive.Exists(c, b.Name, key, archiveId)
+	arch, err := archive.FindOne(c, b.Name, key, archiveId)
 	if err != nil {
 		handleError(c, err)
-		return "", false
+		return nil, false
 	}
-	if !exists {
-		handleError(c, ec.NoSuchArchive)
-		c.Abort()
-		return "", false
-	}
-	return archiveId, true
+	return arch, true
 }

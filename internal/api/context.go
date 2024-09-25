@@ -7,7 +7,6 @@ package api
 import (
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
-	"github.com/cfichtmueller/stor/internal/domain/object"
 )
 
 func contextGetBucket(c jug.Context) *bucket.Bucket {
@@ -16,8 +15,4 @@ func contextGetBucket(c jug.Context) *bucket.Bucket {
 
 func contextGetObjectKey(c jug.Context) string {
 	return c.Param("objectKey")[1:]
-}
-
-func contextGetObject(c jug.Context) *object.Object {
-	return c.MustGet("object").(*object.Object)
 }

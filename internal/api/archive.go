@@ -39,12 +39,30 @@ func handleCreateArchive(c jug.Context) {
 	})
 }
 
+type ArchiveResponse struct {
+	ID    string `json:"id"`
+	State string `json:"state"`
+	Type  string `json:"type"`
+}
+
+func handleGetArchive(c jug.Context) {
+	arch, ok := archiveFilter(c)
+	if !ok {
+		return
+	}
+	c.RespondOk(ArchiveResponse{
+		ID:    arch.ID,
+		State: arch.State,
+		Type:  arch.Type,
+	})
+}
+
 type AddArchiveEntriesRequest struct {
 	Entries []archive.Entry `json:"entries"`
 }
 
 func handleAddArchiveEntries(c jug.Context) {
-	archiveId, ok := archiveFilter(c)
+	arch, ok := archiveFilter(c)
 	if !ok {
 		return
 	}
@@ -53,10 +71,7 @@ func handleAddArchiveEntries(c jug.Context) {
 		return
 	}
 
-	if err := archive.AddEntries(c, archive.AddEntriesCommand{
-		ArchiveId: archiveId,
-		Entries:   req.Entries,
-	}); err != nil {
+	if err := archive.AddEntries(c, arch, req.Entries); err != nil {
 		handleError(c, err)
 		return
 	}
@@ -71,12 +86,12 @@ type CompleteArchiveResult struct {
 }
 
 func handleCompleteArchive(c jug.Context) {
-	archiveId, ok := archiveFilter(c)
+	arch, ok := archiveFilter(c)
 	if !ok {
 		return
 	}
 
-	if err := archive.Complete(c, archiveId); err != nil {
+	if err := archive.Complete(c, arch); err != nil {
 		handleError(c, err)
 		return
 	}
@@ -85,12 +100,12 @@ func handleCompleteArchive(c jug.Context) {
 }
 
 func handleAbortArchive(c jug.Context) {
-	archiveId, ok := archiveFilter(c)
+	arch, ok := archiveFilter(c)
 	if !ok {
 		return
 	}
 
-	log.Printf("abort archive %s", archiveId)
+	log.Printf("abort archive %s", arch.ID)
 
 	c.RespondNoContent()
 }
