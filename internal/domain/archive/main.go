@@ -297,7 +297,9 @@ func finishArchive(ctx context.Context, arch *Archive) error {
 }
 
 func failArchive(ctx context.Context, id string) {
-
+	if _, err := updateStmt.ExecContext(ctx, StateFailed, false, id); err != nil {
+		log.Printf("unable to fail archive %s: %v", id, err)
+	}
 }
 
 func scanRow(row *sql.Row) (*Archive, error) {
