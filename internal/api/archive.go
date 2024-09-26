@@ -5,8 +5,6 @@
 package api
 
 import (
-	"log"
-
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/archive"
 )
@@ -105,7 +103,9 @@ func handleAbortArchive(c jug.Context) {
 		return
 	}
 
-	log.Printf("abort archive %s", arch.ID)
+	if err := archive.Abort(c, arch); err != nil {
+		handleError(c, err)
+	}
 
 	c.RespondNoContent()
 }

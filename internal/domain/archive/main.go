@@ -166,14 +166,22 @@ func Complete(ctx context.Context, a *Archive) error {
 	return nil
 }
 
-func deleteArchive(ctx context.Context, id string) {
+func Abort(ctx context.Context, a *Archive) error {
+	if a.State != StatePending && a.State != StateFailed {
+		return ec.ArchiveNotAbortable
+	}
+	return delete(ctx, a.ID)
+}
+
+func delete(ctx context.Context, id string) error {
 	if _, err := deleteStmt.ExecContext(ctx, id); err != nil {
-		log.Printf("unable to delete archive record: %v", err)
+		return fmt.Errorf("unable to delete archive record: %v", err)
 	}
 
 	if _, err := deleteEntriesStmt.ExecContext(ctx, id); err != nil {
-		log.Printf("unable to delete archive entries: %v", err)
+		return fmt.Errorf("unable to delete archive entries: %v", err)
 	}
+	return nil
 }
 
 func worker() {
@@ -283,7 +291,10 @@ func finishArchive(ctx context.Context, arch *Archive) error {
 	}); err != nil {
 		return err
 	}
-	deleteArchive(ctx, arch.ID)
+
+	if err := delete(ctx, arch.ID); err != nil {
+		fmt.Errorf("unable to delete archive: %v", err)
+	}
 
 	log.Printf("Finished archive: %s", s.Summary())
 

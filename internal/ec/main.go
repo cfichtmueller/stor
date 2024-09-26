@@ -6,6 +6,7 @@ package ec
 
 var (
 	AccountDisabled     = &Error{StatusCode: 401, Code: "AccountDisabled", Message: "The user account is disabled"}
+	ArchiveNotAbortable = &Error{StatusCode: 409, Code: "ArchiveNotAbortable", Message: "The archive is not abortable"}
 	ArchiveNotPending   = &Error{StatusCode: 409, Code: "ArchiveNotPending", Message: "The archive is not pending"}
 	BucketAlreadyExists = &Error{StatusCode: 409, Code: "BucketAlreadyExists", Message: "The requested bucket name is not available"}
 	BucketNotEmpty      = &Error{StatusCode: 409, Code: "BucketNotEmpty", Message: "The bucket is not empty"}
