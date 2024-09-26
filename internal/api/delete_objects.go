@@ -6,11 +6,12 @@ package api
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/cfichtmueller/jug"
-	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/ec"
+	"github.com/cfichtmueller/stor/internal/uc"
 	"github.com/cfichtmueller/stor/internal/util"
 )
 
@@ -74,9 +75,9 @@ func handleDeleteObjects(c jug.Context) {
 		res = append(res, *r)
 	}
 
-	b.Objects -= deletedCount
-	b.Size -= deletedSize
-	_ = bucket.Save(c, b)
+	if err := uc.ReconcileBucket(c, b); err != nil {
+		log.Printf("unable to reconcile bucket: %v", err)
+	}
 
 	c.RespondOk(DeleteResults{
 		Results: res,
