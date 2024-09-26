@@ -97,7 +97,7 @@ func Configure() {
 	findObjectChunksStmt = db.Prepare("SELECT chunk FROM object_chunks WHERE object = $1 ORDER BY seq")
 	deleteObjectChunksStmt = db.Prepare("DELETE FROM object_chunks WHERE object = $1")
 	countStmt = db.Prepare("SELECT COUNT(*) FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted  = $3")
-	statsStmt = db.Prepare("SELECT COUNT(*), SUM(size) FROM objects WHERE bucket = $1 AND is_deleted = $2")
+	statsStmt = db.Prepare("SELECT COUNT(*), TOTAL(size) FROM objects WHERE bucket = $1 AND is_deleted = $2")
 
 	db.RunMigrationF("add_object_etags", func() error {
 		find := db.Prepare("SELECT id, key FROM objects WHERE etag IS NULL AND key > $1 ORDER BY key LIMIT 10000")
