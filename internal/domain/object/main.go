@@ -149,11 +149,16 @@ type Stats struct {
 }
 
 func StatsForBucket(ctx context.Context, bucketName string) (*Stats, error) {
-	var s Stats
-	if err := statsStmt.QueryRowContext(ctx, bucketName, false).Scan(&s.ObjectCount, &s.TotalSize); err != nil {
+	var objects int64
+	var size float64
+	if err := statsStmt.QueryRowContext(ctx, bucketName, false).Scan(&objects, &size); err != nil {
 		return nil, fmt.Errorf("unable to query object stats: %v", err)
 	}
-	return &s, nil
+
+	return &Stats{
+		ObjectCount: objects,
+		TotalSize:   int64(size),
+	}, nil
 }
 
 func decodeRows(rows *sql.Rows, err error) ([]*Object, error) {
