@@ -44,6 +44,14 @@ type ArchiveResponse struct {
 }
 
 func handleGetArchive(c jug.Context) {
+	if !mustAuthenticateApiKey(c) {
+		return
+	}
+	b, ok := mustGetBucket(c)
+	if !ok {
+		return
+	}
+	contextSetBucket(c, b)
 	arch, ok := archiveFilter(c)
 	if !ok {
 		return

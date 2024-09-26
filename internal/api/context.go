@@ -9,10 +9,19 @@ import (
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 )
 
+var (
+	paramBucketName = "bucketName"
+	paramObjectKey  = "objectKey"
+)
+
 func contextGetBucket(c jug.Context) *bucket.Bucket {
 	return c.MustGet("bucket").(*bucket.Bucket)
 }
 
+func contextSetBucket(c jug.Context, b *bucket.Bucket) {
+	c.Set("bucket", b)
+}
+
 func contextGetObjectKey(c jug.Context) string {
-	return c.Param("objectKey")[1:]
+	return c.Param(paramObjectKey)[1:]
 }

@@ -8,6 +8,7 @@ var (
 	queryArchiveId  = "archive-id"
 	queryArchives   = "archives"
 	queryPartNumber = "part-number"
+	queryNonces     = "nonces"
 	queryUploadId   = "upload-id"
 	queryUploads    = "uploads"
 )

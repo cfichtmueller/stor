@@ -42,7 +42,16 @@ func handleObjectGet(c jug.Context) {
 }
 
 func handleGetObject(c jug.Context) {
-	o, ok := objectFilter(c)
+	if _, ok := authenticateApiKey(c); !ok {
+		if !mustAuthenticateNonce(c) {
+			return
+		}
+	}
+	b, ok := mustGetBucket(c)
+	if !ok {
+		return
+	}
+	o, ok := mustGetObject(c, b)
 	if !ok {
 		return
 	}
@@ -56,11 +65,22 @@ func handleGetObject(c jug.Context) {
 }
 
 func handleObjectPost(c jug.Context) {
+	if !mustAuthenticateApiKey(c) {
+		return
+	}
+	b, ok := mustGetBucket(c)
+	if !ok {
+		return
+	}
+	contextSetBucket(c, b)
+
 	query := c.Request().URL.Query()
 	if query.Has(queryArchives) {
 		handleCreateArchive(c)
 	} else if query.Get(queryArchiveId) != "" {
 		handleCompleteArchive(c)
+	} else if query.Has(queryNonces) {
+		handleCreateNonce(c)
 	} else if query.Has(queryUploads) {
 		handleCreateMultipartUpload(c)
 	} else if query.Get(queryUploadId) != "" {

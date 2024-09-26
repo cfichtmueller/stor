@@ -13,6 +13,7 @@ import (
 	"github.com/cfichtmueller/stor/internal/domain/archive"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/chunk"
+	"github.com/cfichtmueller/stor/internal/domain/nonce"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/domain/session"
 	"github.com/cfichtmueller/stor/internal/domain/user"
@@ -24,6 +25,7 @@ func Configure() {
 	}
 
 	db.Configure()
+
 	user.Configure()
 	apikey.Configure()
 	session.Configure()
@@ -31,4 +33,5 @@ func Configure() {
 	bucket.Configure()
 	object.Configure()
 	archive.Configure()
+	nonce.Configure()
 }
