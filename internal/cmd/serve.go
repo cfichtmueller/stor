@@ -33,7 +33,9 @@ var serveCmd = &cobra.Command{
 		consoleAddr := config.ConsoleHost + ":" + config.ConsolePort
 
 		engineServer := newServer(apiAddr, apiEngine)
+
 		consoleServer := newServer(consoleAddr, consoleEngine)
+		consoleServer.WriteTimeout = 10 * time.Second
 
 		g.Go(func() error {
 			return engineServer.ListenAndServe()
@@ -54,9 +56,8 @@ var serveCmd = &cobra.Command{
 
 func newServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
-		Addr:         addr,
-		Handler:      handler,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:        addr,
+		Handler:     handler,
+		ReadTimeout: 30 * time.Second,
 	}
 }
