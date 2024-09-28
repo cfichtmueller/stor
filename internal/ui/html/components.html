@@ -40,18 +40,18 @@ text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:
 
 {{define "Breadcrumbs"}}
 <nav aria-label="breadcrumb">
-    <ol class="flex flex-wrap items-center gap-1.5 break-words text-sm text-muted-foreground sm:gap-2.5">
+    <ol class="flex flex-wrap items-center break-words text-sm text-muted-foreground sm:gap-1">
         {{range .Crumbs}}
             {{if .Separator}}
             <li role="presentation" aria-hidden="true" class="[&amp;>svg]:size-3.5">
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.10876 14L9.46582 1H10.8178L5.46074 14H4.10876Z" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
             </li>
             {{else if .Link}}
-            <li class="inline-flex items-center gap-1.5" hx-boost="true">
+            <li class="inline-flex items-center" hx-boost="true">
                 <a class="transition-colors hover:text-foreground" href="{{.Link}}">{{.Title}}</a>
             </li>
             {{else}}
-            <li class="inline-flex items-center gap-1.5">
+            <li class="inline-flex items-center">
                 <span role="link" aria-disabled="true" aria-current="page" class="font-normal text-foreground">{{.Title}}</span>
             </li>
             {{end}}
