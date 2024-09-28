@@ -12,7 +12,7 @@ var (
 type adminPageModel struct {
 	PageHeader pageHeaderModel
 	AppSidebar SidebarModel
-	NavTabs    NavTabsModel
+	NavTabs    *NavTabsModel
 }
 
 func newAdminPageModel(activeTab string) adminPageModel {
@@ -21,8 +21,8 @@ func newAdminPageModel(activeTab string) adminPageModel {
 			Title: "Admin",
 		},
 		AppSidebar: appSidebarModel(app_sidebar_active_admin),
-		NavTabs: NavTabsModel{
-			Tabs: []NavLink{
+		NavTabs: &NavTabsModel{
+			Tabs: []*NavLink{
 				{
 					Link:   usersLink,
 					Active: activeTab == admin_tab_active_users,

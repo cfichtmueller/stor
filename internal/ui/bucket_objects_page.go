@@ -8,12 +8,25 @@ import (
 	"io"
 
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
-	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/util"
 )
 
-func RenderBucketObjectsPage(w io.Writer, b *bucket.Bucket, objects []*object.Object) error {
-	m := newBucketPageModel(b, "objects")
-	m.Objects = util.MapMany(objects, newObjectModel)
+type BucketObjectsPageData struct {
+	Bucket  *bucket.Bucket
+	Objects []ObjectData
+}
+
+type bucketObjectsPageModel struct {
+	P       *bucketPageModel
+	NavTabs NavTabsModel
+	Objects []objectModel
+}
+
+func RenderBucketObjectsPage(w io.Writer, d BucketObjectsPageData) error {
+	m := &bucketObjectsPageModel{
+		P:       newBucketPageModel(d.Bucket),
+		NavTabs: *newBucketNavTabs(d.Bucket.Name, "objects"),
+		Objects: util.MapMany(d.Objects, newObjectModel),
+	}
 	return renderTemplate(w, "BucketObjectsPage", m)
 }

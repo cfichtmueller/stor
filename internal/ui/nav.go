@@ -12,7 +12,13 @@ type NavLink struct {
 }
 
 type NavTabsModel struct {
-	Tabs []NavLink
+	Tabs []*NavLink
+}
+
+func NewNavTabsModel() *NavTabsModel {
+	return &NavTabsModel{
+		Tabs: make([]*NavLink, 0),
+	}
 }
 
 type SidebarModel struct {

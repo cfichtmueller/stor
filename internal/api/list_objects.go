@@ -5,11 +5,9 @@
 package api
 
 import (
-	"context"
-
 	"github.com/cfichtmueller/jug"
-	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/object"
+	"github.com/cfichtmueller/stor/internal/uc"
 	"github.com/cfichtmueller/stor/internal/util"
 )
 
@@ -38,26 +36,19 @@ func handleListObjects(c jug.Context) {
 	b := contextGetBucket(c)
 
 	if delimiter != "" {
-		s := &PrefixSearch{
-			b:            b,
-			index:        object.NewPrefixIndex(delimiter, prefix),
-			startAfter:   startAfter,
-			currentStart: startAfter,
-			maxKeys:      maxKeys,
-			objects:      make([]*object.Object, 0),
-		}
-		if err := s.Do(c); err != nil {
+		r, err := uc.ObjectPrefixSearch(c, b, delimiter, prefix, startAfter, maxKeys)
+		if err != nil {
 			handleError(c, err)
 			return
 		}
 		c.RespondOk(ListObjectsResponse{
-			IsTruncated:    s.truncated,
-			Objects:        util.MapMany(s.objects, newObjectResponse),
+			IsTruncated:    r.IsTruncated,
+			Objects:        util.MapMany(r.Objects, newObjectResponse),
 			Name:           b.Name,
 			MaxKeys:        maxKeys,
-			KeyCount:       len(s.objects),
+			KeyCount:       len(r.Objects),
 			StartAfter:     &startAfter,
-			CommonPrefixes: s.index.CommonPrefixes,
+			CommonPrefixes: r.CommonPrefixes,
 		})
 		return
 	}
@@ -86,35 +77,4 @@ func handleListObjects(c jug.Context) {
 		KeyCount:    keyCount,
 		StartAfter:  startAfterRes,
 	})
-}
-
-type PrefixSearch struct {
-	b            *bucket.Bucket
-	index        *object.PrefixIndex
-	startAfter   string
-	currentStart string
-	maxKeys      int
-	truncated    bool
-	objects      []*object.Object
-}
-
-func (s *PrefixSearch) Do(ctx context.Context) error {
-	contents, err := object.List(ctx, s.b.Name, s.currentStart, 1000)
-	if err != nil {
-		return err
-	}
-	if len(contents) == 0 {
-		return nil
-	}
-	for _, o := range contents {
-		if s.index.AddKey(o.Key) {
-			if len(s.objects) == s.maxKeys {
-				s.truncated = true
-			} else {
-				s.objects = append(s.objects, o)
-			}
-		}
-		s.currentStart = o.Key
-	}
-	return s.Do(ctx)
 }

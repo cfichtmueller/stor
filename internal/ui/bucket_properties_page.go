@@ -11,13 +11,17 @@ import (
 )
 
 type bucketPropertiesPageModel struct {
-	P       bucketPageModel
+	P       *bucketPageModel
+	NavTabs *NavTabsModel
+	Bucket  bucketModel
 	Details DetailsModel
 }
 
 func RenderBucketPropertiesPage(w io.Writer, b *bucket.Bucket) error {
 	m := bucketPropertiesPageModel{
-		P: newBucketPageModel(b, "properties"),
+		P:       newBucketPageModel(b),
+		NavTabs: newBucketNavTabs(b.Name, "properties"),
+		Bucket:  newBucketModel(b),
 		Details: DetailsModel{
 			Details: []DetailModel{
 				{Title: "Name", Value: b.Name},

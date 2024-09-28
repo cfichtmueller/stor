@@ -12,15 +12,19 @@ const (
 	apiKeysLink   = "/u/admin/api-keys"
 )
 
-type bucketLinks struct {
+type BucketLinks struct {
 	Objects    string
 	Properties string
 	Settings   string
 }
 
-func newBucketLinks(bucketName string) bucketLinks {
+func (l *BucketLinks) Folder(prefix string) string {
+	return l.Objects + "?prefix=" + prefix
+}
+
+func NewBucketLinks(bucketName string) *BucketLinks {
 	base := bucketsLink + "/" + bucketName
-	return bucketLinks{
+	return &BucketLinks{
 		Objects:    base + "/objects",
 		Properties: base + "/properties",
 		Settings:   base + "/settings",

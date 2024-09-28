@@ -7,9 +7,9 @@
         {{template "EndTableRow"}}
     {{template "EndTableHeader"}}
     {{template "BeginTableBody"}}
-        {{range .Objects}}
+        {{range .}}
             {{template "BeginTableRow"}}
-                {{template "BeginTableCell"}}<a href="/{{.Bucket}}/{{.Key}}" target="_blank">{{.Key}}</a>{{template "EndTableCell"}}
+                {{template "BeginTableCell"}}<a href="{{.Href}}">{{.Key}}</a>{{template "EndTableCell"}}
                 {{template "BeginTableCell"}}{{.Size}}{{template "EndTableCell"}}
             {{template "EndTableRow"}}
         {{end}}

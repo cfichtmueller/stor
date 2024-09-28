@@ -13,6 +13,7 @@ import (
 	"github.com/cfichtmueller/stor/internal/domain/chunk"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/domain/user"
+	"github.com/cfichtmueller/stor/internal/uc"
 	"github.com/cfichtmueller/stor/internal/ui"
 )
 
@@ -56,11 +57,46 @@ func handleBucketPage(c jug.Context) {
 
 func handleBucketObjectsPage(c jug.Context) {
 	b := contextGetBucket(c)
-	objects, err := object.List(c, b.Name, "", 1000)
+	delimiter := "/"
+	prefix := c.Query("prefix")
+	prefixLen := len(prefix)
+	r, err := uc.ObjectPrefixSearch(c, b, delimiter, prefix, "", 1000)
 	if !must("find objects", c, err) {
 		return
 	}
-	must("render bucket objects page", c, ui.RenderBucketObjectsPage(c.Writer(), b, objects))
+	baseHref := ui.NewBucketLinks(b.Name).Objects
+	objects := make([]ui.ObjectData, 0, len(r.CommonPrefixes)+len(r.Objects)+1)
+	if pathParts := object.SplitPath(prefix, delimiter); len(pathParts) > 0 {
+		objects = append(objects, ui.ObjectData{
+			Key:  "..",
+			Href: baseHref + "?prefix=" + object.JoinPath(pathParts[:len(pathParts)-1], delimiter),
+		})
+	}
+	for _, p := range r.CommonPrefixes {
+		objects = append(objects, ui.ObjectData{
+			Key:  p[prefixLen:],
+			Href: baseHref + "?prefix=" + p,
+		})
+	}
+	for _, o := range r.Objects {
+		objects = append(objects, ui.ObjectData{
+			Key:  o.Key[prefixLen:],
+			Size: o.Size,
+			Href: baseHref + "/" + o.ID,
+		})
+	}
+	if prefix == "" {
+		must("render bucket objects page", c, ui.RenderBucketObjectsPage(c.Writer(), ui.BucketObjectsPageData{
+			Bucket:  b,
+			Objects: objects,
+		}))
+	} else {
+		must("render bucket folder page", c, ui.RenderBucketFolderPage(c.Writer(), ui.BucketFolderPageData{
+			Bucket:  b,
+			Prefix:  prefix,
+			Objects: objects,
+		}))
+	}
 }
 
 func handleBucketPropertiesPage(c jug.Context) {

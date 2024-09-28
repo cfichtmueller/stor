@@ -5,7 +5,18 @@
 package ui
 
 type BreadcrumbsModel struct {
-	Crumbs []BreadcrumbModel
+	Crumbs []*BreadcrumbModel
+}
+
+func (m *BreadcrumbsModel) Add(c *BreadcrumbModel) {
+	m.Crumbs = append(m.Crumbs, c)
+}
+
+func (m *BreadcrumbsModel) Last() *BreadcrumbModel {
+	if len(m.Crumbs) == 0 {
+		return nil
+	}
+	return m.Crumbs[len(m.Crumbs)-1]
 }
 
 type BreadcrumbModel struct {

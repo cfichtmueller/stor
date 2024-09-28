@@ -23,3 +23,41 @@ func RenderBucketsTable(w io.Writer, buckets []*bucket.Bucket) error {
 func RenderCreateBucketDialog(w io.Writer) error {
 	return renderTemplate(w, "CreateBucketDialog", nil)
 }
+
+func newBucketNavTabs(bucketName, active string) *NavTabsModel {
+	links := NewBucketLinks(bucketName)
+	return &NavTabsModel{
+		Tabs: []*NavLink{
+			{
+				Link:   links.Objects,
+				Active: active == "objects",
+				Title:  "Objects",
+				Icon:   "files",
+			},
+			{
+				Active: active == "properties",
+				Link:   links.Properties,
+				Title:  "Properties",
+				Icon:   "sliders-horizontal",
+			},
+			{
+				Link:   links.Settings,
+				Active: active == "settings",
+				Title:  "Settings",
+				Icon:   "cog",
+			},
+		},
+	}
+}
+
+func newBuckeFoldertNavTabs(bucketName string) *NavTabsModel {
+	return &NavTabsModel{
+		Tabs: []*NavLink{
+			{
+				Active: true,
+				Title:  "Objects",
+				Icon:   "files",
+			},
+		},
+	}
+}

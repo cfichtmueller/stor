@@ -45,49 +45,22 @@ type bucketPageModel struct {
 	AppSidebar  SidebarModel
 	PageHeader  pageHeaderModel
 	PageTitle   string
-	Breadcrumbs BreadcrumbsModel
-	NavTabs     NavTabsModel
-	Bucket      bucketModel
-	Objects     []objectModel
+	Breadcrumbs *BreadcrumbsModel
 }
 
-func newBucketPageModel(b *bucket.Bucket, active string) bucketPageModel {
-	links := newBucketLinks(b.Name)
-	return bucketPageModel{
+func newBucketPageModel(b *bucket.Bucket) *bucketPageModel {
+	return &bucketPageModel{
 		AppSidebar: appSidebarModel(app_sidebar_active_buckets),
 		PageHeader: pageHeaderModel{
 			Title:     "Buckets",
 			CloseLink: bucketsLink,
 		},
-		Breadcrumbs: BreadcrumbsModel{
-			Crumbs: []BreadcrumbModel{
-				{Title: "Buckets", Link: "/u/buckets"},
+		Breadcrumbs: &BreadcrumbsModel{
+			Crumbs: []*BreadcrumbModel{
+				{Title: "Buckets", Link: bucketsLink},
 				{Separator: true},
 				{Title: b.Name},
 			},
 		},
-		NavTabs: NavTabsModel{
-			Tabs: []NavLink{
-				{
-					Link:   links.Objects,
-					Active: active == "objects",
-					Title:  "Objects",
-					Icon:   "files",
-				},
-				{
-					Active: active == "properties",
-					Link:   links.Properties,
-					Title:  "Properties",
-					Icon:   "sliders-horizontal",
-				},
-				{
-					Link:   links.Settings,
-					Active: active == "settings",
-					Title:  "Settings",
-					Icon:   "cog",
-				},
-			},
-		},
-		Bucket: newBucketModel(b),
 	}
 }

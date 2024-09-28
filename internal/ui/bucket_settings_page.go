@@ -10,6 +10,14 @@ import (
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 )
 
+type bucketSettingsPageModel struct {
+	P       *bucketPageModel
+	NavTabs *NavTabsModel
+}
+
 func RenderBucketSettingsPage(w io.Writer, b *bucket.Bucket) error {
-	return renderTemplate(w, "BucketSettingsPage", newBucketPageModel(b, "settings"))
+	return renderTemplate(w, "BucketSettingsPage", bucketSettingsPageModel{
+		P:       newBucketPageModel(b),
+		NavTabs: newBucketNavTabs(b.Name, "settings"),
+	})
 }

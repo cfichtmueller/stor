@@ -4,20 +4,26 @@
 
 package ui
 
-import "github.com/cfichtmueller/stor/internal/domain/object"
-
-type objectModel struct {
-	ID     string
-	Bucket string
-	Key    string
-	Size   string
+type ObjectData struct {
+	Key  string
+	Size int64
+	Href string
 }
 
-func newObjectModel(o *object.Object) objectModel {
+type objectModel struct {
+	Key  string
+	Size string
+	Href string
+}
+
+func newObjectModel(d ObjectData) objectModel {
+	size := ""
+	if d.Size > 0 {
+		size = formatBytes(d.Size)
+	}
 	return objectModel{
-		ID:     o.ID,
-		Bucket: o.Bucket,
-		Key:    o.Key,
-		Size:   formatBytes(o.Size),
+		Key:  d.Key,
+		Size: size,
+		Href: d.Href,
 	}
 }
