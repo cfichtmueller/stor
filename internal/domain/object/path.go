@@ -20,3 +20,11 @@ func JoinPath(parts []string, delimiter string) string {
 	}
 	return strings.Join(parts, delimiter) + delimiter
 }
+
+func PathPrefix(key string, delimiter string) string {
+	parts := SplitPath(key, delimiter)
+	if len(parts) < 2 {
+		return ""
+	}
+	return JoinPath(parts[:len(parts)-1], delimiter)
+}

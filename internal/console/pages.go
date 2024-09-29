@@ -5,6 +5,8 @@
 package console
 
 import (
+	"errors"
+
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/config"
 	"github.com/cfichtmueller/stor/internal/disk"
@@ -13,6 +15,7 @@ import (
 	"github.com/cfichtmueller/stor/internal/domain/chunk"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/domain/user"
+	"github.com/cfichtmueller/stor/internal/ec"
 	"github.com/cfichtmueller/stor/internal/uc"
 	"github.com/cfichtmueller/stor/internal/ui"
 )
@@ -64,25 +67,25 @@ func handleBucketObjectsPage(c jug.Context) {
 	if !must("find objects", c, err) {
 		return
 	}
-	baseHref := ui.NewBucketLinks(b.Name).Objects
+	bucketLinks := ui.NewBucketLinks(b.Name)
 	objects := make([]ui.ObjectData, 0, len(r.CommonPrefixes)+len(r.Objects)+1)
 	if pathParts := object.SplitPath(prefix, delimiter); len(pathParts) > 0 {
 		objects = append(objects, ui.ObjectData{
 			Key:  "..",
-			Href: baseHref + "?prefix=" + object.JoinPath(pathParts[:len(pathParts)-1], delimiter),
+			Href: bucketLinks.Folder(object.JoinPath(pathParts[:len(pathParts)-1], delimiter)),
 		})
 	}
 	for _, p := range r.CommonPrefixes {
 		objects = append(objects, ui.ObjectData{
 			Key:  p[prefixLen:],
-			Href: baseHref + "?prefix=" + p,
+			Href: bucketLinks.Folder(p),
 		})
 	}
 	for _, o := range r.Objects {
 		objects = append(objects, ui.ObjectData{
 			Key:  o.Key[prefixLen:],
 			Size: o.Size,
-			Href: baseHref + "/" + o.ID,
+			Href: bucketLinks.Object(o.Key),
 		})
 	}
 	if prefix == "" {
@@ -107,6 +110,20 @@ func handleBucketPropertiesPage(c jug.Context) {
 func handleBucketSettingsPage(c jug.Context) {
 	b := contextGetBucket(c)
 	must("render bucket settings page", c, ui.RenderBucketSettingsPage(c.Writer(), b))
+}
+
+func handleObjectPage(c jug.Context) {
+	key := c.Query("key")
+	b := contextGetBucket(c)
+	o, err := object.FindOne(c, b.Name, key, false)
+	if err != nil && errors.Is(err, ec.NoSuchKey) {
+		must("render not found page", c, ui.RenderNotFoundPage(c.Writer()))
+		return
+	}
+	if !must("find object", c, err) {
+		return
+	}
+	must("render object page", c, ui.RenderObjectPropertiesPage(c.Writer(), b, o))
 }
 
 func handleAdminPage(c jug.Context) {

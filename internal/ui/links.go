@@ -13,20 +13,26 @@ const (
 )
 
 type BucketLinks struct {
+	base       string
 	Objects    string
 	Properties string
 	Settings   string
+}
+
+func NewBucketLinks(bucketName string) *BucketLinks {
+	base := bucketsLink + "/" + bucketName
+	return &BucketLinks{
+		base:       base,
+		Objects:    base + "/objects",
+		Properties: base + "/properties",
+		Settings:   base + "/settings",
+	}
 }
 
 func (l *BucketLinks) Folder(prefix string) string {
 	return l.Objects + "?prefix=" + prefix
 }
 
-func NewBucketLinks(bucketName string) *BucketLinks {
-	base := bucketsLink + "/" + bucketName
-	return &BucketLinks{
-		Objects:    base + "/objects",
-		Properties: base + "/properties",
-		Settings:   base + "/settings",
-	}
+func (l *BucketLinks) Object(key string) string {
+	return l.base + "/object?key=" + key
 }

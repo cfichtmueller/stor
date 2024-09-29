@@ -52,3 +52,24 @@ func TestJoinPath(t *testing.T) {
 		}
 	}
 }
+
+type pathPrefixTest struct {
+	key      string
+	expected string
+}
+
+func TestPathPrefix(t *testing.T) {
+	tests := []pathPrefixTest{
+		{key: "", expected: ""},
+		{key: "a.pdf", expected: ""},
+		{key: "a/b.pdf", expected: "a/"},
+		{key: "a/b/c.pdf", expected: "a/b/"},
+	}
+
+	for _, test := range tests {
+		actual := PathPrefix(test.key, "/")
+		if actual != test.expected {
+			t.Errorf("Expected '%s' for '%s', got '%s'", test.expected, test.key, actual)
+		}
+	}
+}

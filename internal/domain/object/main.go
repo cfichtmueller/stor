@@ -185,6 +185,7 @@ func decodeRows(rows *sql.Rows, err error) ([]*Object, error) {
 	return objects, nil
 }
 
+// FindOne finds an object. Returns ec.NoSuchKey if the object cannot be found
 func FindOne(ctx context.Context, bucketName, key string, deleted bool) (*Object, error) {
 	var o Object
 	if err := findOneStmt.QueryRowContext(ctx, bucketName, key, deleted).Scan(

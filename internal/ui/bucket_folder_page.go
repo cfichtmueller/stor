@@ -8,7 +8,6 @@ import (
 	"io"
 
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
-	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/util"
 )
 
@@ -28,19 +27,11 @@ func RenderBucketFolderPage(w io.Writer, d BucketFolderPageData) error {
 	p := newBucketPageModel(d.Bucket)
 	links := NewBucketLinks(d.Bucket.Name)
 	p.Breadcrumbs.Last().Link = links.Objects
-	prefix := ""
-	for _, f := range object.SplitPath(d.Prefix, "/") {
-		prefix = prefix + f + "/"
-		p.Breadcrumbs.Add(&BreadcrumbModel{Separator: true})
-		p.Breadcrumbs.Add(&BreadcrumbModel{
-			Title: f,
-			Link:  links.Folder(prefix),
-		})
-	}
+	addPathCrumbs(p.Breadcrumbs, links, d.Prefix)
 	p.Breadcrumbs.Last().Link = ""
 	m := &bucketFolderPageModel{
 		P:       p,
-		NavTabs: newBuckeFoldertNavTabs(d.Bucket.Name),
+		NavTabs: newBuckeFoldertNavTabs(),
 		Objects: util.MapMany(d.Objects, newObjectModel),
 	}
 	return renderTemplate(w, "BucketObjectsPage", m)

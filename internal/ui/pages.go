@@ -55,12 +55,6 @@ func newBucketPageModel(b *bucket.Bucket) *bucketPageModel {
 			Title:     "Buckets",
 			CloseLink: bucketsLink,
 		},
-		Breadcrumbs: &BreadcrumbsModel{
-			Crumbs: []*BreadcrumbModel{
-				{Title: "Buckets", Link: bucketsLink},
-				{Separator: true},
-				{Title: b.Name},
-			},
-		},
+		Breadcrumbs: newBucketBreadcrumbs(b.Name),
 	}
 }

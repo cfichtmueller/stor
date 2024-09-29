@@ -77,6 +77,7 @@ func Configure() jug.Engine {
 	uBucketGroup := uGroup.Group("/buckets/:bucketName", bucketFilter)
 	uBucketGroup.GET("", handleBucketPage)
 	uBucketGroup.GET("/objects", handleBucketObjectsPage)
+	uBucketGroup.GET("/object", handleObjectPage)
 	uBucketGroup.GET("/properties", handleBucketPropertiesPage)
 	uBucketGroup.GET("/settings", handleBucketSettingsPage)
 

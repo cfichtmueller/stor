@@ -27,3 +27,12 @@ func newObjectModel(d ObjectData) objectModel {
 		Href: d.Href,
 	}
 }
+
+func newObjectNavTabs(objectsLink, active string) *NavTabsModel {
+	return &NavTabsModel{
+		Tabs: []*NavLink{
+			newObjectsTab(objectsLink, active == "objects"),
+			newPropertiesTab("", active == "properties"),
+		},
+	}
+}
