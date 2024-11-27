@@ -47,7 +47,7 @@ func Configure() {
 }
 
 func Create(ctx context.Context, user, ipAddress string) (*Session, error) {
-	now := time.Now()
+	now := domain.TimeNow()
 	s := &Session{
 		ID:         domain.NewId(64),
 		User:       user,
@@ -93,7 +93,7 @@ func Get(ctx context.Context, id string) (*Session, error) {
 }
 
 func MarkSeen(ctx context.Context, id string) error {
-	now := time.Now()
+	now := domain.TimeNow()
 	if _, err := updateStmt.ExecContext(ctx, now, now.Add(TTL), id); err != nil {
 		return fmt.Errorf("unable to update session record: %v", err)
 	}

@@ -58,7 +58,7 @@ func Configure() {
 }
 
 func Create(ctx context.Context, principal string, cmd CreateCommand) (*ApiKey, string, error) {
-	now := time.Now()
+	now := domain.TimeNow()
 	expiry := now.Add(cmd.TTL)
 	prefix := domain.RandomId()
 	suffix := domain.NewId(54)
@@ -144,7 +144,7 @@ func Authenticate(ctx context.Context, key string) (*ApiKey, error) {
 		return nil, ec.InvalidCredentials
 	}
 
-	if k.ExpiresAt.Before(time.Now()) {
+	if k.ExpiresAt.Before(domain.TimeNow()) {
 		return nil, ec.InvalidCredentials
 	}
 

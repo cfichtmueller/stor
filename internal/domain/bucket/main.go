@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/cfichtmueller/stor/internal/db"
+	"github.com/cfichtmueller/stor/internal/domain"
 	"github.com/cfichtmueller/stor/internal/ec"
 )
 
@@ -75,7 +76,7 @@ func Create(ctx context.Context, cmd CreateCommand) (*Bucket, error) {
 		Name:      cmd.Name,
 		Objects:   0,
 		Size:      0,
-		CreatedAt: time.Now(),
+		CreatedAt: domain.TimeNow(),
 	}
 	if _, err := createStmt.ExecContext(ctx, b.Name, b.Objects, b.Size, b.CreatedAt, "system"); err != nil {
 		return nil, fmt.Errorf("unable to create bucket record: %v", err)

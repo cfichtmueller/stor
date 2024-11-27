@@ -85,7 +85,7 @@ func Create(ctx context.Context, cmd CreateCommand) (*User, error) {
 		ID:        domain.RandomId(),
 		Email:     email,
 		Enabled:   true,
-		CreatedAt: time.Now(),
+		CreatedAt: domain.TimeNow(),
 	}
 	if err := u.SetPassword(cmd.Password); err != nil {
 		return nil, err
