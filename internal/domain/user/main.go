@@ -67,6 +67,10 @@ func Configure() {
 	updateStmt = db.Prepare("UPDATE users SET email = $1, enabled = $2, password_hash = $3, last_seen_at = $3 WHERE id = $4")
 }
 
+func Urn(id string) string {
+	return "user:" + id
+}
+
 func Create(ctx context.Context, cmd CreateCommand) (*User, error) {
 	email := strings.ToLower(cmd.Email)
 	existing, err := find(ctx, email)

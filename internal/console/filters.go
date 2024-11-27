@@ -12,6 +12,7 @@ import (
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/session"
+	"github.com/cfichtmueller/stor/internal/domain/user"
 	"github.com/cfichtmueller/stor/internal/ui"
 )
 
@@ -51,33 +52,35 @@ func apiKeyFilter(c jug.Context) {
 
 func authenticatedFilter(c jug.Context) {
 	authCookie, authCookieExists := c.Cookie("stor_auth")
-	if authCookieExists {
-		if err := authenticateSession(c, authCookie); err != nil {
-			if errors.Is(err, ErrLoginRequired) {
-				hxRedirect(c, "/login")
-				c.Abort()
-				return
-			}
-			c.HandleError(err)
-			c.Abort()
-			return
-		}
+	if !authCookieExists {
+		hxRedirect(c, "/login")
+		c.Abort()
 		return
 	}
-	hxRedirect(c, "/login")
-	c.Abort()
+	userId, err := authenticateSession(c, authCookie)
+	if err != nil {
+		if errors.Is(err, ErrLoginRequired) {
+			hxRedirect(c, "/login")
+		} else {
+			c.HandleError(err)
+		}
+		c.Abort()
+		return
+	}
+	contextSetPrincipal(c, user.Urn(userId))
 }
 
-func authenticateSession(c jug.Context, sessionId string) error {
+// authenticates a session and returns the user's id if successful
+func authenticateSession(c jug.Context, sessionId string) (string, error) {
 	s, err := session.Get(c, sessionId)
 	if err != nil {
 		if errors.Is(err, session.ErrNotFound) {
-			return ErrLoginRequired
+			return "", ErrLoginRequired
 		}
-		return err
+		return "", err
 	}
 	if s.IsExpired() {
-		return ErrLoginRequired
+		return "", ErrLoginRequired
 	}
-	return nil
+	return s.User, nil
 }

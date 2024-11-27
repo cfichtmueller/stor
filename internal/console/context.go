@@ -17,3 +17,11 @@ func contextGetBucket(c jug.Context) *bucket.Bucket {
 func contextGetApiKey(c jug.Context) *apikey.ApiKey {
 	return c.MustGet("apiKey").(*apikey.ApiKey)
 }
+
+func contextSetPrincipal(c jug.Context, principal string) {
+	c.Set("principal", principal)
+}
+
+func contextMustGetPrincipal(c jug.Context) string {
+	return c.MustGet("principal").(string)
+}

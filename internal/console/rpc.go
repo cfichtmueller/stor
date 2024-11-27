@@ -17,15 +17,14 @@ import (
 // API Key
 //
 
-func handleRpcCreateApiKey(c jug.Context) {
+func handleRpcCreateApiKey(c jug.Context, principal string) {
 	var description string
 	if err := bindFormData(c, "description", &description); err != nil {
 		c.HandleError(err)
 		return
 	}
 
-	//TODO: get PRINCIPAL
-	key, plain, err := apikey.Create(c, "aaabbbcc", apikey.CreateCommand{
+	key, plain, err := apikey.Create(c, principal, apikey.CreateCommand{
 		Description: description,
 		TTL:         time.Hour * 24 * 360,
 	})

@@ -59,7 +59,7 @@ func Configure() jug.Engine {
 
 	// r is for rpc
 	r := console.Group("/r", authenticatedFilter, requireHxRequest)
-	r.POST("/api-key", handleRpcCreateApiKey)
+	r.POST("/api-key", withPrincipal(handleRpcCreateApiKey))
 	r.DELETE("/api-key", apiKeyFilter, handleRpcDeleteApiKey)
 	r.POST("/bucket", handleRpcCreateBucket)
 

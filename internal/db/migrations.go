@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -195,6 +197,42 @@ func runMigrations() {
 					return fmt.Errorf("unable to update object chunks object pointers for object %s: %v", e.id, err)
 				}
 			}
+		}
+		return nil
+	})
+
+	// api key created by setup
+	mf("20241127_initialize_api_key_created_by", func() error {
+		if _, err := db.Exec(`CREATE TABLE api_keys_dg_tmp(
+			id CHAR(10) PRIMARY KEY,
+			prefix      CHAR(10)  NOT NULL,
+			hash        BLOB      NOT NULL,
+			description TEXT      NOT NULL,
+			created_at  TIMESTAMP NOT NULL,
+			created_by  CHAR(32)  NOT NULL,
+			expires_at  TIMESTAMP NOT NULL
+		)`); err != nil {
+			return err
+		}
+		if _, err := db.Exec(`INSERT INTO api_keys_dg_tmp(id, prefix, hash, description, created_at, created_by, expires_at)
+			SELECT id, prefix, hash, description, created_at, created_by, expires_at FROM api_keys;`); err != nil {
+			return err
+		}
+		if _, err := db.Exec("DROP TABLE api_keys"); err != nil {
+			return err
+		}
+		if _, err := db.Exec("ALTER TABLE api_keys_dg_tmp RENAME TO api_keys;"); err != nil {
+			return err
+		}
+		var id string
+		if err := db.QueryRow("SELECT id FROM users LIMIT 1").Scan(&id); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+		if _, err := db.Exec("UPDATE api_keys SET created_by = ?", "user:"+id); err != nil {
+			return fmt.Errorf("unable to update api keys: %v", err)
 		}
 		return nil
 	})
