@@ -13,6 +13,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cfichtmueller/stor/internal/config"
@@ -29,34 +30,65 @@ type CreateCommand struct {
 	Size        int64
 }
 
-type Object struct {
-	ID          string
-	Bucket      string
-	Key         string
-	ETag        string
+type UpdateCommand struct {
 	ContentType string
+	Data        []byte
 	Size        int64
-	CreatedAt   time.Time
-	Deleted     bool
 }
 
-var (
-	maxPurgeTime = 400 * time.Millisecond
-	objectFields = "id, bucket, key, etag, content_type, size, created_at, is_deleted"
+type Object struct {
+	ID             string
+	Bucket         string
+	Key            string
+	ETag           string
+	ContentType    string
+	Size           int64
+	CreatedAt      time.Time
+	Deleted        bool
+	CurrentVersion string
+}
 
-	createStmt             *sql.Stmt
-	listStmt               *sql.Stmt
-	findOneStmt            *sql.Stmt
-	existsStmt             *sql.Stmt
-	updateStmt             *sql.Stmt
-	deleteStmt             *sql.Stmt
-	findDeletedStmt        *sql.Stmt
-	addObjectChunkStmt     *sql.Stmt
-	findObjectChunksStmt   *sql.Stmt
-	deleteObjectChunksStmt *sql.Stmt
-	countStmt              *sql.Stmt
-	statsStmt              *sql.Stmt
-	purgeFlag              = true
+const (
+	objectsTable        = "objects"
+	objectVersionsTable = "object_versions"
+	objectChunksTable   = "object_chunks"
+	chunksTable         = "chunks"
+)
+
+var (
+	purgeMutex   sync.Mutex
+	maxPurgeTime = 400 * time.Millisecond
+	purgeFlag    = true
+
+	objectFields = "id, bucket, key, etag, content_type, size, created_at, is_deleted, current"
+
+	createStmt               *sql.Stmt
+	listStmt                 *sql.Stmt
+	findOneStmt              *sql.Stmt
+	existsStmt               *sql.Stmt
+	updateObjectMetadataStmt *sql.Stmt
+	// Marks an object as deleted. Input: object id
+	markObjectDeletedStmt *sql.Stmt
+	// Finds all deleted objects. Input: none
+	findDeletedObjectsStmt *sql.Stmt
+	// Deletes an object. Input: object id
+	deleteObjectStmt     *sql.Stmt
+	addObjectChunkStmt   *sql.Stmt
+	findObjectChunksStmt *sql.Stmt
+	//TODO: rename object col to version
+	// Deletes all object chunks ob an object. Input: object id
+	deleteObjectChunksStmt  *sql.Stmt
+	countStmt               *sql.Stmt
+	statsStmt               *sql.Stmt
+	createObjectVersionStmt *sql.Stmt
+	// Marks all object versions of an object as deleted. Input: object id
+	markObjectVersionsDeletedStmt *sql.Stmt
+	// Marks an object version as deleted. Input: object version id
+	markObjectVersionDeletedStmt *sql.Stmt
+	// Finds all deleted objects. Input: none
+	findDeletedObjectVersionsStmt *sql.Stmt
+	// Deletes an object version. Input: object version id
+	deleteObjectVersionStmt *sql.Stmt
 )
 
 func Configure() {
@@ -64,6 +96,31 @@ func Configure() {
 		log.Fatalf("unable to create chunk directory: %v", err)
 	}
 
+	runMigrations()
+
+	createStmt = db.Prepare("INSERT INTO objects (" + objectFields + ") VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8)")
+	listStmt = db.Prepare("SELECT " + objectFields + " FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted = $3 ORDER BY key LIMIT $4")
+	findOneStmt = db.Prepare("SELECT " + objectFields + " FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3 LIMIT 1")
+	existsStmt = db.Prepare("SELECT COUNT(*) as count FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3")
+	markObjectDeletedStmt = db.Prepare("UPDATE objects SET is_deleted = 1 WHERE id = ?")
+	deleteObjectStmt = db.Prepare("DELETE FROM objects WHERE id = ?")
+	findDeletedObjectsStmt = db.Prepare("SELECT id FROM objects WHERE is_deleted = true LIMIT 1000")
+	addObjectChunkStmt = db.Prepare("INSERT INTO object_chunks (object, chunk, seq) VALUES ($1, $2, $3)")
+	findObjectChunksStmt = db.Prepare("SELECT chunk FROM object_chunks WHERE object = $1 ORDER BY seq")
+	deleteObjectChunksStmt = db.Prepare("DELETE FROM object_chunks WHERE object = $1")
+	countStmt = db.Prepare("SELECT COUNT(*) FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted  = $3")
+	statsStmt = db.Prepare("SELECT COUNT(*), TOTAL(size) FROM objects WHERE bucket = $1 AND is_deleted = $2")
+	createObjectVersionStmt = db.Prepare("INSERT INTO object_versions (id, object, content_type, size, created_at, etag, is_deleted) VALUES (?, ?, ?, ?, ?, ?, 0)")
+	updateObjectMetadataStmt = db.Prepare("UPDATE objects SET content_type = ?, size = ?, etag = ?, current = ? WHERE id = ?")
+	markObjectVersionsDeletedStmt = db.Prepare("UPDATE object_versions SET is_deleted = 1 WHERE object = ?")
+	markObjectVersionDeletedStmt = db.Prepare("UPDATE object_versions SET is_deleted = 1 WHERE id = ?")
+	findDeletedObjectVersionsStmt = db.Prepare("SELECT id FROM object_versions WHERE is_deleted = true LIMIT 1000")
+	deleteObjectVersionStmt = db.Prepare("DELETE FROM object_versions WHERE id = ?")
+
+	go worker()
+}
+
+func runMigrations() {
 	db.RunMigration("create_object_table", `CREATE TABLE objects(
 		id CHAR(32) PRIMARY KEY,
 		bucket CHAR(64) NOT NULL,
@@ -73,32 +130,16 @@ func Configure() {
 		created_at DATETIME NOT NULL
 	)
 	`)
-
 	db.RunMigration("create_object_chunks_table", `CREATE TABLE object_chunks(
 		object CHAR(32),
 		chunk CHAR(64),
 		seq INT,
 		PRIMARY KEY (object, chunk, seq)
 	)`)
-
 	db.RunMigration("add_object_deleted_flag", `ALTER TABLE objects ADD COLUMN is_deleted INTEGER`)
 	db.RunMigration("add_object_key_index", `CREATE INDEX idx_objects_key_bucket_deleted ON objects (key, bucket, is_deleted)`)
 	db.RunMigration("add_objectchunk_key_index", `CREATE INDEX idx_objectchunk_key ON object_chunks (object)`)
 	db.RunMigration("add_object_etag_1", `ALTER TABLE objects ADD COLUMN etag CHAR(64)`)
-
-	createStmt = db.Prepare("INSERT INTO objects (" + objectFields + ") VALUES ($1, $2, $3, $4, $5, $6, $7, false)")
-	listStmt = db.Prepare("SELECT " + objectFields + " FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted = $3 ORDER BY key LIMIT $4")
-	findOneStmt = db.Prepare("SELECT " + objectFields + " FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3 LIMIT 1")
-	existsStmt = db.Prepare("SELECT COUNT(*) as count FROM objects WHERE bucket = $1 AND key = $2 AND is_deleted = $3")
-	updateStmt = db.Prepare("UPDATE objects SET is_deleted = $1 WHERE id = $2")
-	deleteStmt = db.Prepare("DELETE FROM objects WHERE id = $1")
-	findDeletedStmt = db.Prepare("SELECT id FROM objects WHERE is_deleted = true LIMIT 1000")
-	addObjectChunkStmt = db.Prepare("INSERT INTO object_chunks (object, chunk, seq) VALUES ($1, $2, $3)")
-	findObjectChunksStmt = db.Prepare("SELECT chunk FROM object_chunks WHERE object = $1 ORDER BY seq")
-	deleteObjectChunksStmt = db.Prepare("DELETE FROM object_chunks WHERE object = $1")
-	countStmt = db.Prepare("SELECT COUNT(*) FROM objects WHERE bucket = $1 AND key > $2 AND is_deleted  = $3")
-	statsStmt = db.Prepare("SELECT COUNT(*), TOTAL(size) FROM objects WHERE bucket = $1 AND is_deleted = $2")
-
 	db.RunMigrationF("add_object_etags", func() error {
 		find := db.Prepare("SELECT id, key FROM objects WHERE etag IS NULL AND key > $1 ORDER BY key LIMIT 10000")
 		update := db.Prepare("UPDATE objects SET etag = $1 WHERE id = $2")
@@ -128,7 +169,80 @@ func Configure() {
 		}
 		return nil
 	})
-	go worker()
+	db.RunMigrationF("add_object_versions", func() error {
+		if _, err := db.Exec(`ALTER TABLE objects ADD COLUMN current CHAR(32)`); err != nil {
+			return err
+		}
+		if _, err := db.Exec(`CREATE TABLE object_versions(
+		id CHAR(32) PRIMARY KEY,
+		object CHAR(32) NOT NULL,
+		content_type TEXT NOT NULL,
+		size INT NOT NULL,
+		created_at DATETIME NOT NULL,
+		etag CHAR(64) NOT NULL,
+		is_deleted INT NOT NULL
+	)`); err != nil {
+			return err
+		}
+
+		type mo struct {
+			id          string
+			contentType string
+			size        int64
+			createdAt   time.Time
+			etag        string
+		}
+
+		offset := 0
+		for {
+			rows, err := db.Query("SELECT id, content_type, size, created_at, etag FROM objects ORDER BY id LIMIT 1000 OFFSET ?", offset)
+			if err != nil {
+				return err
+			}
+
+			mos := make([]*mo, 0)
+
+			for rows.Next() {
+				e := mo{}
+				if err := rows.Scan(
+					&e.id,
+					&e.contentType,
+					&e.size,
+					&e.createdAt,
+					&e.etag,
+				); err != nil {
+					return fmt.Errorf("unable to decode object row: %v", err)
+				}
+				mos = append(mos, &e)
+			}
+
+			if len(mos) == 0 {
+				break
+			}
+			offset += len(mos)
+
+			for _, e := range mos {
+				versionId := domain.RandomId()
+				if _, err := db.Exec("INSERT INTO object_versions (id, object, content_type, size, created_at, etag, is_deleted) VALUES (?, ?, ?, ?, ?, ?, 0)",
+					versionId,
+					e.id,
+					e.contentType,
+					e.size,
+					e.createdAt,
+					e.etag,
+				); err != nil {
+					return fmt.Errorf("unable to create object version for object %s: %v", e.id, err)
+				}
+				if _, err := db.Exec("UPDATE objects SET current = ? WHERE id = ?", versionId, e.id); err != nil {
+					return fmt.Errorf("unable to set object version pointer for object %s: %v", e.id, err)
+				}
+				if _, err := db.Exec("UPDATE object_chunks SET object = ? WHERE object = ?", versionId, e.id); err != nil {
+					return fmt.Errorf("unable to update object chunks object pointers for object %s: %v", e.id, err)
+				}
+			}
+		}
+		return nil
+	})
 }
 
 func List(ctx context.Context, bucketName, startAfter string, limit int) ([]*Object, error) {
@@ -177,6 +291,7 @@ func decodeRows(rows *sql.Rows, err error) ([]*Object, error) {
 			&o.Size,
 			&o.CreatedAt,
 			&o.Deleted,
+			&o.CurrentVersion,
 		); err != nil {
 			return nil, fmt.Errorf("unable to decode object record: %v", err)
 		}
@@ -197,6 +312,7 @@ func FindOne(ctx context.Context, bucketName, key string, deleted bool) (*Object
 		&o.Size,
 		&o.CreatedAt,
 		&o.Deleted,
+		&o.CurrentVersion,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ec.NoSuchKey
@@ -255,28 +371,76 @@ func CreateWithChunk(ctx context.Context, bucketId, chunkId string, cmd CreateCo
 		size = int64(len(cmd.Data))
 	}
 	o := Object{
-		ID:          domain.RandomId(),
-		Bucket:      bucketId,
-		Key:         cmd.Key,
-		ETag:        domain.NewEtag(),
-		ContentType: cmd.ContentType,
-		Size:        size,
-		CreatedAt:   time.Now(),
+		ID:             domain.RandomId(),
+		Bucket:         bucketId,
+		Key:            cmd.Key,
+		ETag:           domain.NewEtag(),
+		ContentType:    cmd.ContentType,
+		Size:           size,
+		CreatedAt:      domain.TimeNow(),
+		CurrentVersion: domain.RandomId(),
 	}
 
-	if _, err := createStmt.ExecContext(ctx, &o.ID, &o.Bucket, &o.Key, &o.ETag, &o.ContentType, &o.Size, &o.CreatedAt); err != nil {
-		return nil, fmt.Errorf("unable to persist object record: %v", err)
+	if _, err := createObjectVersionStmt.ExecContext(ctx, o.CurrentVersion, o.ID, o.ContentType, o.Size, o.CreatedAt, o.ETag); err != nil {
+		return nil, fmt.Errorf("unable to create object version: %v", err)
 	}
-
-	if _, err := addObjectChunkStmt.ExecContext(ctx, o.ID, chunkId, 1); err != nil {
+	if _, err := addObjectChunkStmt.ExecContext(ctx, o.CurrentVersion, chunkId, 1); err != nil {
 		return nil, fmt.Errorf("unable to persist object chunk record: %v", err)
+	}
+	if _, err := createStmt.ExecContext(ctx, o.ID, o.Bucket, o.Key, o.ETag, o.ContentType, o.Size, o.CreatedAt, o.CurrentVersion); err != nil {
+		return nil, fmt.Errorf("unable to persist object record: %v", err)
 	}
 
 	return &o, nil
 }
 
+var updateLock sync.Mutex
+
+func Update(ctx context.Context, o *Object, cmd UpdateCommand) (*Object, error) {
+	size := cmd.Size
+	if size == 0 && cmd.Data != nil {
+		size = int64(len(cmd.Data))
+	}
+	chunkId, err := chunk.Create(ctx, cmd.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	updateLock.Lock()
+	defer updateLock.Unlock()
+
+	versionId := domain.RandomId()
+	now := domain.TimeNow()
+	etag := domain.NewEtag()
+	if _, err := createObjectVersionStmt.ExecContext(ctx, versionId, o.ID, cmd.ContentType, size, now, etag); err != nil {
+		return nil, fmt.Errorf("unable to create object version: %v", err)
+	}
+	if _, err := addObjectChunkStmt.ExecContext(ctx, versionId, chunkId, 1); err != nil {
+		return nil, fmt.Errorf("unable to persist object chunk record: %v", err)
+	}
+	if _, err := updateObjectMetadataStmt.ExecContext(ctx, cmd.ContentType, size, etag, versionId, o.ID); err != nil {
+		return nil, fmt.Errorf("unable to update object: %v", err)
+	}
+	if _, err := markObjectVersionDeletedStmt.ExecContext(ctx, o.CurrentVersion); err != nil {
+		return nil, fmt.Errorf("unable to set previous object version as deleted")
+	}
+
+	triggerPurge()
+
+	return &Object{
+		ID:             o.ID,
+		Bucket:         o.Bucket,
+		Key:            o.Key,
+		ContentType:    cmd.ContentType,
+		Size:           size,
+		Deleted:        o.Deleted,
+		ETag:           etag,
+		CurrentVersion: versionId,
+	}, nil
+}
+
 func Write(ctx context.Context, o *Object, w io.Writer) error {
-	chunkIds, err := findObjectChunks(ctx, o.ID)
+	chunkIds, err := findObjectChunks(ctx, o.CurrentVersion)
 	if err != nil {
 		return err
 	}
@@ -290,12 +454,10 @@ func Write(ctx context.Context, o *Object, w io.Writer) error {
 
 func Delete(ctx context.Context, o *Object) error {
 	o.Deleted = true
-	if _, err := updateStmt.ExecContext(ctx, true, o.ID); err != nil {
+	if _, err := markObjectDeletedStmt.ExecContext(ctx, o.ID); err != nil {
 		return fmt.Errorf("unable to update object record: %v", err)
 	}
-
-	purgeFlag = true
-
+	triggerPurge()
 	return nil
 }
 
@@ -316,54 +478,125 @@ func findObjectChunks(ctx context.Context, objectId string) ([]string, error) {
 	return ids, nil
 }
 
+func triggerPurge() {
+	purgeMutex.Lock()
+	purgeFlag = true
+	purgeMutex.Unlock()
+}
+
 func worker() {
 	ticker := time.NewTicker(time.Second)
 	for {
 		<-ticker.C
-		purgeObjects()
+		purge()
 	}
 }
 
-func purgeObjects() {
+func purge() {
+	ctx, cancel := context.WithTimeout(context.Background(), maxPurgeTime)
+	purgeContext(ctx)
+	defer cancel()
+}
+
+func purgeContext(ctx context.Context) {
 	if !purgeFlag {
 		return
 	}
-	start := time.Now()
-	ctx := context.Background()
-	rows, err := findDeletedStmt.QueryContext(ctx)
+	objectIds, err := getDeletedObjectIds(ctx)
 	if err != nil {
-		log.Printf("unable to purge objects: %v", err)
+		log.Printf("%v", err)
 		return
+	}
+	for i, id := range objectIds {
+		select {
+		case <-ctx.Done():
+			if i > 0 {
+				log.Printf("purged %d objects", i)
+			}
+			return
+		default:
+			if err := purgeObject(ctx, id); err != nil {
+				log.Printf("unable to purge object: %v", err)
+				return
+			}
+		}
+	}
+	if len(objectIds) > 0 {
+		log.Printf("purged %d objects", len(objectIds))
+	}
+
+	versionIds, err := getDeletedObjectVersionIds(ctx)
+	if err != nil {
+		log.Printf("%v", err)
+		return
+	}
+	for i, id := range versionIds {
+		select {
+		case <-ctx.Done():
+			if i > 0 {
+				log.Printf("purged %d object versions", i)
+			}
+		default:
+			if err := purgeObjectVersion(ctx, id); err != nil {
+				log.Printf("unable to purge object version: %v", err)
+				return
+			}
+		}
+	}
+
+	if len(versionIds) > 0 {
+		log.Printf("purged %d object versions", len(versionIds))
+	}
+
+	purgeMutex.Lock()
+	purgeFlag = false
+	purgeMutex.Unlock()
+}
+
+func getDeletedObjectIds(ctx context.Context) ([]string, error) {
+	rows, err := findDeletedObjectsStmt.QueryContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find deleted objects: %v", err)
 	}
 	ids := make([]string, 0)
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			log.Printf("unable to purge objects: %v", err)
-			return
+			return nil, fmt.Errorf("unable to scan object row: %v", err)
 		}
 		ids = append(ids, id)
 	}
-	for i, id := range ids {
-		if err := purgeObject(ctx, id); err != nil {
-			log.Printf("unable to purge objects: %v", err)
-			return
-		}
-		if time.Since(start) > maxPurgeTime {
-			if i > 1 {
-				log.Printf("purged %d objects", i-1)
-			}
-			return
-		}
-	}
-	if len(ids) > 0 {
-		log.Printf("purged %d objects", len(ids))
-	}
-	purgeFlag = false
+	return ids, nil
 }
 
 func purgeObject(ctx context.Context, objectId string) error {
-	chunkIds, err := findObjectChunks(ctx, objectId)
+	if _, err := markObjectVersionsDeletedStmt.ExecContext(ctx, objectId); err != nil {
+		return fmt.Errorf("unable to mark object versions as deleted: %v", err)
+	}
+	if _, err := deleteObjectStmt.ExecContext(ctx, objectId); err != nil {
+		return fmt.Errorf("unable to delete object: %v", err)
+	}
+	return nil
+}
+
+func getDeletedObjectVersionIds(ctx context.Context) ([]string, error) {
+	rows, err := findDeletedObjectVersionsStmt.QueryContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find deleted object versions: %v", err)
+	}
+	ids := make([]string, 0)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("unable to scan object version row: %v", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+func purgeObjectVersion(ctx context.Context, versionId string) error {
+	chunkIds, err := findObjectChunks(ctx, versionId)
 	if err != nil {
 		return err
 	}
@@ -372,14 +605,12 @@ func purgeObject(ctx context.Context, objectId string) error {
 			return err
 		}
 	}
-
-	if _, err := deleteObjectChunksStmt.ExecContext(ctx, objectId); err != nil {
+	if _, err := deleteObjectChunksStmt.ExecContext(ctx, versionId); err != nil {
 		return fmt.Errorf("unable to delete chunk links: %v", err)
 	}
 
-	if _, err := deleteStmt.ExecContext(ctx, objectId); err != nil {
-		return fmt.Errorf("unable to delete object: %v", err)
+	if _, err := deleteObjectVersionStmt.ExecContext(ctx, versionId); err != nil {
+		return fmt.Errorf("unable to delete object version: %v", err)
 	}
-
 	return nil
 }

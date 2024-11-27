@@ -38,6 +38,10 @@ func Configure() {
 	insertMigrationStmt = Prepare("INSERT INTO migrations (id, executed_at) VALUES ($1, $2)")
 }
 
+func Exec(query string, args ...any) (sql.Result, error) {
+	return db.Exec(query, args...)
+}
+
 func Prepare(statement string) *sql.Stmt {
 	s, err := db.Prepare(statement)
 	if err != nil {
@@ -48,6 +52,14 @@ func Prepare(statement string) *sql.Stmt {
 
 func PrepareOne(query string) (*sql.Stmt, error) {
 	return db.Prepare(query)
+}
+
+func Query(query string, args ...any) (*sql.Rows, error) {
+	return db.Query(query, args...)
+}
+
+func QueryRow(query string, args ...any) *sql.Row {
+	return db.QueryRow(query, args...)
 }
 
 func RunMigration(id, statement string) {

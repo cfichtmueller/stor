@@ -96,7 +96,7 @@ func handleObjectPut(c jug.Context) {
 	} else if c.Query(queryUploadId) != "" {
 		handleUploadPart(c)
 	} else {
-		handleCreateObject(c)
+		handleCreateOrUpdateObject(c)
 	}
 }
 
@@ -110,7 +110,7 @@ func handleObjectDelete(c jug.Context) {
 	}
 }
 
-func handleCreateObject(c jug.Context) {
+func handleCreateOrUpdateObject(c jug.Context) {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
 
@@ -124,13 +124,35 @@ func handleCreateObject(c jug.Context) {
 		return
 	}
 
-	o, err := uc.CreateObject(c, b, object.CreateCommand{
-		Key:         key,
-		ContentType: contentType,
-		Data:        d,
-	})
+	exists, err := object.Exists(c, b.Name, key)
 	if err != nil {
 		handleError(c, err)
+		return
+	}
+
+	var o *object.Object
+	var e error
+
+	if exists {
+		existing, err := object.FindOne(c, b.Name, key, false)
+		if err != nil {
+			handleError(c, err)
+			return
+		}
+		o, e = uc.UpdateObject(c, b, existing, object.UpdateCommand{
+			ContentType: contentType,
+			Data:        d,
+		})
+	} else {
+		o, e = uc.CreateObject(c, b, object.CreateCommand{
+			Key:         key,
+			ContentType: contentType,
+			Data:        d,
+		})
+	}
+
+	if e != nil {
+		handleError(c, e)
 		return
 	}
 
