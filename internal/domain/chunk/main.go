@@ -56,12 +56,6 @@ func Configure() {
 		log.Fatalf("unable to create chunk temp directory: %v", err)
 	}
 
-	db.RunMigration("create_chunks_table", `CREATE TABLE chunks(
-		id CHAR(64) PRIMARY KEY,
-		size INT NOT NULL,
-		rc INT NOT NULL
-	)`)
-
 	createStmt = db.Prepare("INSERT INTO chunks (id, size, rc) VALUES ($1, $2, $3)")
 	findOneStmt = db.Prepare("SELECT id, size, rc FROM chunks WHERE id = $1")
 	updateStmt = db.Prepare("UPDATE chunks SET rc = $1 WHERE id = $2")

@@ -60,15 +60,6 @@ var (
 )
 
 func Configure() {
-	db.RunMigration("create_users_table", `CREATE TABLE users(
-	id CHAR(10) PRIMARY KEY,
-	email TEXT NOT NULL,
-	enabled BOOLEAN NOT NULL,
-	password_hash BLOB NOT NULL,
-	created_at TIMESTAMP NOT NULL,
-	last_seen_at TIMESTAMP
-	)`)
-
 	createStmt = db.Prepare("INSERT INTO users (id, email, enabled, password_hash, created_at, last_seen_at) VALUES ($1, $2, $3, $4, $5, $6)")
 	listStmt = db.Prepare("SELECT * FROM users ORDER BY email")
 	findStmt = db.Prepare("SELECT * FROM users WHERE email = $1 LIMIT 1")

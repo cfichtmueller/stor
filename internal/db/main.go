@@ -5,11 +5,9 @@
 package db
 
 import (
-	"context"
 	"database/sql"
 	"log"
 	"path"
-	"time"
 
 	"github.com/cfichtmueller/stor/internal/config"
 	_ "github.com/mattn/go-sqlite3"
@@ -36,10 +34,8 @@ func Configure() {
 
 	findMigrationStmt = Prepare("SELECT COUNT(*) as count FROM migrations WHERE id = $1")
 	insertMigrationStmt = Prepare("INSERT INTO migrations (id, executed_at) VALUES ($1, $2)")
-}
 
-func Exec(query string, args ...any) (sql.Result, error) {
-	return db.Exec(query, args...)
+	runMigrations()
 }
 
 func Prepare(statement string) *sql.Stmt {
@@ -54,35 +50,6 @@ func PrepareOne(query string) (*sql.Stmt, error) {
 	return db.Prepare(query)
 }
 
-func Query(query string, args ...any) (*sql.Rows, error) {
-	return db.Query(query, args...)
-}
-
 func QueryRow(query string, args ...any) *sql.Row {
 	return db.QueryRow(query, args...)
-}
-
-func RunMigration(id, statement string) {
-	RunMigrationF(id, func() error {
-		ctx := context.Background()
-		_, err := db.ExecContext(ctx, statement)
-		return err
-	})
-}
-
-func RunMigrationF(id string, f func() error) {
-	ctx := context.Background()
-	var count int
-	if err := findMigrationStmt.QueryRowContext(ctx, id).Scan(&count); err != nil {
-		log.Fatalf("unable to query migration: %v", err)
-	}
-	if count > 0 {
-		return
-	}
-	if err := f(); err != nil {
-		log.Fatalf("unable to run migration %s: %v", id, err)
-	}
-	if _, err := insertMigrationStmt.Exec(id, time.Now()); err != nil {
-		log.Fatalf("unable to persist migration status: %v", err)
-	}
 }

@@ -39,15 +39,6 @@ var (
 )
 
 func Configure() {
-	db.RunMigration("create_sessions_table", `CREATE TABLE sessions(
-		id CHAR(64) PRIMARY KEY,
-		user CHAR(10) NOT NULL,
-		ip_address CHAR(40) NOT NULL,
-		created_at TIMESTAMP NOT NULL,
-		last_seen_at TIMESTAMP NOT NULL,
-		expires_at TIMESTAMP NOT NULL
-	)`)
-
 	createStmt = db.Prepare("INSERT INTO sessions (id, user, ip_address, created_at, last_seen_at, expires_at) VALUES ($1, $2, $3, $4, $5, $6)")
 	listStmt = db.Prepare("SELECT * FROM sessions WHERE user = $1 ORDER BY last_seen_at DESC")
 	getStmt = db.Prepare("SELECT * FROM sessions where id = $1 LIMIT 1")

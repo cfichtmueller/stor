@@ -49,16 +49,6 @@ var (
 )
 
 func Configure() {
-	db.RunMigration("create_api_keys_table", `CREATE TABLE api_keys(
-	id char(10) PRIMARY KEY,
-	prefix char(10) NOT NULL,
-	hash BLOB NOT NULL,
-	description TEXT NOT NULL,
-	created_at TIMESTAMP NOT NULL,
-	created_by char(10) NOT NULL,
-	expires_at TIMESTAMP NOT NULL
-	)`)
-
 	createStmt = db.Prepare("INSERT INTO api_keys (id, prefix, hash, description, created_at, created_by, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)")
 	listStmt = db.Prepare("SELECT * FROM api_keys ORDER BY created_at")
 	findStmt = db.Prepare("SELECT * FROM api_keys WHERE prefix = $1 LIMIT 1")

@@ -51,24 +51,6 @@ type CompletedEvent struct {
 }
 
 func Configure() {
-	db.RunMigration("create_archive_table", `CREATE TABLE archives (
-	id CHAR(32) PRIMARY KEY,
-	bucket CHAR(64) NOT NULL,
-	key TEXT NOT NULL,
-	type CHAR(6) NOT NULL,
-	state CHAR(64) NOT NULL, 
-	is_deleted INTEGER NOT NULL
-	)`)
-
-	db.RunMigration("create_archive_entries_table", `CREATE TABLE archive_entries (
-	id CHAR(32) PRIMARY KEY,
-	archive CHAR(32) NOT NULL,
-	key TEXT NOT NULL,
-	name TEXT NOT NULL
-	)`)
-
-	db.RunMigration("create_archive_entries_index", `CREATE INDEX idx_archive_entries ON archive_entries (archive, name)`)
-
 	createStmt = db.Prepare("INSERT INTO archives (id, bucket, key, type, state, is_deleted) VALUES ($1, $2, $3, $4, $5, false)")
 	findOneStmt = db.Prepare("SELECT " + archiveFields + " FROM archives WHERE id = $1 AND is_deleted = $2")
 	findOneWithStateStmt = db.Prepare("SELECT " + archiveFields + " FROM archives WHERE state = $1 AND is_deleted = false LIMIT 1")

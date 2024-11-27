@@ -49,14 +49,6 @@ var (
 )
 
 func Configure() {
-	db.RunMigration("create_bucket_table", `CREATE TABLE buckets(
-	name CHAR(64) PRIMARY KEY,
-	objects INT NOT NULL,
-	size INT NOT NULL,
-	created_at TIMESTAMP NOT NULL,
-	created_by CHAR(32) NOT NULL
-	)`)
-
 	createStmt = db.Prepare("INSERT INTO buckets (name, objects, size, created_at, created_by) VALUES ($1, $2, $3, $4, $5)")
 	findManyStmt = db.Prepare("SELECT name, objects, size, created_at FROM buckets ORDER BY name ASC")
 	findOneStmt = db.Prepare("SELECT name, objects, size, created_at FROM buckets WHERE name = $1 LIMIT 1")

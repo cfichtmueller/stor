@@ -36,13 +36,6 @@ var (
 )
 
 func Configure() {
-	db.RunMigration("create_nonces_table", `CREATE TABLE nonces(
-		id CHAR(64) PRIMARY KEY,
-		bucket CHAR(64) NOT NULL,
-		key TEXT NOT NULL,
-		expires_at DATETIME NOT NULL
-	)`)
-
 	createStmt = db.Prepare("INSERT INTO nonces (id, bucket, key, expires_at) VALUES ($1, $2, $3, $4)")
 	findOneStmt = db.Prepare("SELECT id, bucket, key, expires_at FROM nonces WHERE id = $1 LIMIT 1")
 	deleteStmt = db.Prepare("DELETE FROM nonces WHERE id = $1")
