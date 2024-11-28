@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/uc"
 )
@@ -113,6 +114,14 @@ func handleObjectDelete(c jug.Context) {
 func handleCreateOrUpdateObject(c jug.Context) {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
+	copySource := c.GetHeader("Stor-Copy-Source")
+
+	if copySource != "" {
+		if err := createOrUpdateObjectFromCopySource(c, b, key, copySource); err != nil {
+			handleError(c, err)
+		}
+		return
+	}
 
 	contentType := c.Request().Header.Get("Content-Type")
 	if contentType == "" {
@@ -130,34 +139,65 @@ func handleCreateOrUpdateObject(c jug.Context) {
 		return
 	}
 
-	var o *object.Object
-	var e error
-
 	if exists {
 		existing, err := object.FindOne(c, b.Name, key, false)
 		if err != nil {
 			handleError(c, err)
 			return
 		}
-		o, e = uc.UpdateObject(c, b, existing, object.UpdateCommand{
+		updated, err := uc.UpdateObjectWithData(c, b, existing, object.UpdateCommand{
 			ContentType: contentType,
 			Data:        d,
 		})
-	} else {
-		o, e = uc.CreateObject(c, b, object.CreateCommand{
-			Key:         key,
-			ContentType: contentType,
-			Data:        d,
-		})
-	}
-
-	if e != nil {
-		handleError(c, e)
+		if err != nil {
+			handleError(c, err)
+			return
+		}
+		respondNoContentWithEtag(c, updated.ETag)
 		return
 	}
 
-	c.Status(204)
-	c.SetHeader("ETag", o.ETag)
+	created, err := uc.CreateObjectFromData(c, b, object.CreateCommand{
+		Key:         key,
+		ContentType: contentType,
+		Data:        d,
+	})
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	respondNoContentWithEtag(c, created.ETag)
+}
+
+func createOrUpdateObjectFromCopySource(c jug.Context, b *bucket.Bucket, key, copySource string) error {
+	src, err := object.FindOne(c, b.Name, copySource, false)
+	if err != nil {
+		return err
+	}
+	exists, err := object.Exists(c, b.Name, key)
+	if err != nil {
+		return err
+	}
+	if exists {
+		existing, err := object.FindOne(c, b.Name, key, false)
+		if err != nil {
+			return err
+		}
+		updated, err := uc.UpdateObjectFromCopy(c, b, src, existing)
+		if err != nil {
+			return err
+		}
+		respondNoContentWithEtag(c, updated.ETag)
+		return nil
+	}
+	created, err := uc.CreateObjectFromCopy(c, b, src, key)
+	if err != nil {
+		return err
+	}
+
+	respondNoContentWithEtag(c, created.ETag)
+	return nil
 }
 
 func handleDeleteObject(c jug.Context) {
@@ -173,4 +213,9 @@ func handleDeleteObject(c jug.Context) {
 	}
 
 	c.RespondNoContent()
+}
+
+func respondNoContentWithEtag(c jug.Context, etag string) {
+	c.Status(204)
+	c.SetHeader("ETag", etag)
 }

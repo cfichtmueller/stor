@@ -34,14 +34,16 @@ type Stats struct {
 }
 
 var (
-	ErrNotFound = fmt.Errorf("chunk not found")
-	tempDir     string
-	createStmt  *sql.Stmt
-	findOneStmt *sql.Stmt
-	updateStmt  *sql.Stmt
-	deleteStmt  *sql.Stmt
-	statsStmt   *sql.Stmt
-	writeMutex  sync.Mutex
+	ErrNotFound                = fmt.Errorf("chunk not found")
+	tempDir                    string
+	createStmt                 *sql.Stmt
+	findOneStmt                *sql.Stmt
+	updateStmt                 *sql.Stmt
+	decreaseReferenceCountStmt *sql.Stmt
+	increaseReferenceCountStmt *sql.Stmt
+	deleteStmt                 *sql.Stmt
+	statsStmt                  *sql.Stmt
+	writeMutex                 sync.Mutex
 )
 
 func Configure() {
@@ -59,6 +61,8 @@ func Configure() {
 	createStmt = db.Prepare("INSERT INTO chunks (id, size, rc) VALUES ($1, $2, $3)")
 	findOneStmt = db.Prepare("SELECT id, size, rc FROM chunks WHERE id = $1")
 	updateStmt = db.Prepare("UPDATE chunks SET rc = $1 WHERE id = $2")
+	decreaseReferenceCountStmt = db.Prepare("UPDATE chunks SET rc = rc - 1 WHERE id = ?")
+	increaseReferenceCountStmt = db.Prepare("UPDATE chunks SET rc = rc + 1 WHERE id = ?")
 	deleteStmt = db.Prepare("DELETE FROM chunks WHERE id = $1")
 	statsStmt = db.Prepare("SELECT COUNT(*) AS count, TOTAL(size) as size FROM chunks")
 }
@@ -95,7 +99,7 @@ func Create(ctx context.Context, data []byte) (string, error) {
 		return id, nil
 	}
 
-	if err := increaseReferenceCount(ctx, c); err != nil {
+	if err := IncreaseReferenceCount(ctx, c.ID); err != nil {
 		return "", err
 	}
 
@@ -119,14 +123,23 @@ func Delete(ctx context.Context, id string) error {
 		if _, err := deleteStmt.ExecContext(ctx, c.ID); err != nil {
 			return fmt.Errorf("unable to delete chunk %s: %v", c.ID, err)
 		}
+		return nil
 	}
 
-	c.References -= 1
+	return DecreaseReferenceCount(ctx, id)
+}
 
-	if err := update(ctx, c); err != nil {
-		return err
+func IncreaseReferenceCount(ctx context.Context, chunkId string) error {
+	if _, err := increaseReferenceCountStmt.ExecContext(ctx, chunkId); err != nil {
+		return fmt.Errorf("unable to increase reference count for chunk %s: %v", chunkId, err)
 	}
+	return nil
+}
 
+func DecreaseReferenceCount(ctx context.Context, chunkId string) error {
+	if _, err := decreaseReferenceCountStmt.ExecContext(ctx, chunkId); err != nil {
+		return fmt.Errorf("unable to decrease reference count for chunk %s: %v", chunkId, err)
+	}
 	return nil
 }
 
@@ -166,11 +179,6 @@ func createChunkTableRow(ctx context.Context, id string, size int64) error {
 		return fmt.Errorf("unable to persist chunk: %v", err)
 	}
 	return nil
-}
-
-func increaseReferenceCount(ctx context.Context, c *Chunk) error {
-	c.References += 1
-	return update(ctx, c)
 }
 
 func find(ctx context.Context, id string) (*Chunk, error) {

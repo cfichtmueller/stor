@@ -72,7 +72,8 @@ var (
 	// Finds all deleted objects. Input: none
 	findDeletedObjectsStmt *sql.Stmt
 	// Deletes an object. Input: object id
-	deleteObjectStmt     *sql.Stmt
+	deleteObjectStmt *sql.Stmt
+	// creates a new object_chunks row. Input: object id, chunk id, seq number
 	addObjectChunkStmt   *sql.Stmt
 	findObjectChunksStmt *sql.Stmt
 	//TODO: rename object col to version
@@ -238,12 +239,13 @@ func Create(ctx context.Context, bucketId string, cmd CreateCommand) (*Object, e
 	return CreateWithChunk(ctx, bucketId, chunkId, cmd)
 }
 
+// CreateWithChunk Creates an object from an existing chunk. This operation does not increase the chunk's reference count.
 func CreateWithChunk(ctx context.Context, bucketId, chunkId string, cmd CreateCommand) (*Object, error) {
 	size := cmd.Size
 	if size == 0 && cmd.Data != nil {
 		size = int64(len(cmd.Data))
 	}
-	o := Object{
+	o := &Object{
 		ID:             domain.RandomId(),
 		Bucket:         bucketId,
 		Key:            cmd.Key,
@@ -253,18 +255,57 @@ func CreateWithChunk(ctx context.Context, bucketId, chunkId string, cmd CreateCo
 		CreatedAt:      domain.TimeNow(),
 		CurrentVersion: domain.RandomId(),
 	}
-
-	if _, err := createObjectVersionStmt.ExecContext(ctx, o.CurrentVersion, o.ID, o.ContentType, o.Size, o.CreatedAt, o.ETag); err != nil {
-		return nil, fmt.Errorf("unable to create object version: %v", err)
+	if err := create(ctx, o, []string{chunkId}); err != nil {
+		return nil, err
 	}
-	if _, err := addObjectChunkStmt.ExecContext(ctx, o.CurrentVersion, chunkId, 1); err != nil {
-		return nil, fmt.Errorf("unable to persist object chunk record: %v", err)
+	return o, nil
+}
+
+// Copy creates a new object by copying src to destKey.
+func Copy(ctx context.Context, src *Object, destKey string) (*Object, error) {
+	o := &Object{
+		ID:             domain.RandomId(),
+		Bucket:         src.Bucket,
+		Key:            destKey,
+		ETag:           domain.NewEtag(),
+		ContentType:    src.ContentType,
+		Size:           src.Size,
+		CreatedAt:      domain.TimeNow(),
+		CurrentVersion: domain.RandomId(),
+	}
+
+	chunkIds, err := findObjectChunks(ctx, src.CurrentVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := create(ctx, o, chunkIds); err != nil {
+		return nil, err
+	}
+
+	for _, chunkId := range chunkIds {
+		if err := chunk.IncreaseReferenceCount(ctx, chunkId); err != nil {
+			return nil, err
+		}
+	}
+
+	return o, nil
+}
+
+func create(ctx context.Context, o *Object, chunkIds []string) error {
+	if _, err := createObjectVersionStmt.ExecContext(ctx, o.CurrentVersion, o.ID, o.ContentType, o.Size, o.CreatedAt, o.ETag); err != nil {
+		return fmt.Errorf("unable to create object version: %v", err)
+	}
+
+	for seq, chunkId := range chunkIds {
+		if _, err := addObjectChunkStmt.ExecContext(ctx, o.CurrentVersion, chunkId, seq+1); err != nil {
+			return fmt.Errorf("unable to persist object chunk record: %v", err)
+		}
 	}
 	if _, err := createStmt.ExecContext(ctx, o.ID, o.Bucket, o.Key, o.ETag, o.ContentType, o.Size, o.CreatedAt, o.CurrentVersion); err != nil {
-		return nil, fmt.Errorf("unable to persist object record: %v", err)
+		return fmt.Errorf("unable to persist object record: %v", err)
 	}
-
-	return &o, nil
+	return nil
 }
 
 var updateLock sync.Mutex
@@ -307,6 +348,49 @@ func Update(ctx context.Context, o *Object, cmd UpdateCommand) (*Object, error) 
 		ContentType:    cmd.ContentType,
 		Size:           size,
 		Deleted:        o.Deleted,
+		ETag:           etag,
+		CurrentVersion: versionId,
+	}, nil
+}
+
+func UpdateFromCopy(ctx context.Context, src, dest *Object) (*Object, error) {
+	updateLock.Lock()
+	defer updateLock.Unlock()
+
+	versionId := domain.RandomId()
+	contentType := src.ContentType
+	size := src.Size
+	now := domain.TimeNow()
+	etag := domain.NewEtag()
+	chunkIds, err := findObjectChunks(ctx, src.CurrentVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := createObjectVersionStmt.ExecContext(ctx, versionId, dest.ID, contentType, size, now, etag); err != nil {
+		return nil, fmt.Errorf("unable to create object version: %v", err)
+	}
+	for seq, chunkId := range chunkIds {
+		if _, err := addObjectChunkStmt.ExecContext(ctx, versionId, chunkId, seq+1); err != nil {
+			return nil, fmt.Errorf("unable to persist object chunk record: %v", err)
+		}
+	}
+	if _, err := updateObjectMetadataStmt.ExecContext(ctx, contentType, size, etag, versionId, dest.ID); err != nil {
+		return nil, fmt.Errorf("unable to update object: %v", err)
+	}
+	if _, err := markObjectVersionDeletedStmt.ExecContext(ctx, dest.CurrentVersion); err != nil {
+		return nil, fmt.Errorf("unable to set previous object version as deleted")
+	}
+
+	triggerPurge()
+
+	return &Object{
+		ID:             dest.ID,
+		Bucket:         dest.Bucket,
+		Key:            dest.Key,
+		ContentType:    contentType,
+		Size:           size,
+		Deleted:        dest.Deleted,
 		ETag:           etag,
 		CurrentVersion: versionId,
 	}, nil

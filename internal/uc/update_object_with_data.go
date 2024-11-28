@@ -11,7 +11,7 @@ import (
 	"github.com/cfichtmueller/stor/internal/domain/object"
 )
 
-func UpdateObject(ctx context.Context, b *bucket.Bucket, o *object.Object, cmd object.UpdateCommand) (*object.Object, error) {
+func UpdateObjectWithData(ctx context.Context, b *bucket.Bucket, o *object.Object, cmd object.UpdateCommand) (*object.Object, error) {
 	updated, err := object.Update(ctx, o, cmd)
 	if err != nil {
 		return nil, err

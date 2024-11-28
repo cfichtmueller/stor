@@ -81,7 +81,7 @@ func (w *Writer) Commit(ctx context.Context) (string, error) {
 		return id, nil
 	}
 
-	if err := increaseReferenceCount(ctx, c); err != nil {
+	if err := IncreaseReferenceCount(ctx, c.ID); err != nil {
 		return "", err
 	}
 

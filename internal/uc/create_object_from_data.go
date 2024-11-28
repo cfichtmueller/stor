@@ -12,7 +12,7 @@ import (
 	"github.com/cfichtmueller/stor/internal/domain/object"
 )
 
-func CreateObject(ctx context.Context, b *bucket.Bucket, cmd object.CreateCommand) (*object.Object, error) {
+func CreateObjectFromData(ctx context.Context, b *bucket.Bucket, cmd object.CreateCommand) (*object.Object, error) {
 	exists, err := object.Exists(ctx, b.Name, cmd.Key)
 	if err != nil {
 		return nil, err
