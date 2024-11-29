@@ -6,6 +6,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"path"
 
@@ -20,8 +21,7 @@ var (
 )
 
 func Configure() {
-	dbUrl := "file:" + path.Join(config.DataDir, "db.s3db?mode=rwc")
-	_db, err := sql.Open("sqlite3", dbUrl)
+	_db, err := openDb()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -38,6 +38,16 @@ func Configure() {
 	runMigrations()
 }
 
+func Check() bool {
+	fmt.Print("Checking database connection...")
+	if _, err := openDb(); err != nil {
+		fmt.Printf("\nERROR: unable to open database: %v\n", err)
+		return false
+	}
+	fmt.Printf(" OK\n")
+	return true
+}
+
 func Prepare(statement string) *sql.Stmt {
 	s, err := db.Prepare(statement)
 	if err != nil {
@@ -52,4 +62,13 @@ func PrepareOne(query string) (*sql.Stmt, error) {
 
 func QueryRow(query string, args ...any) *sql.Row {
 	return db.QueryRow(query, args...)
+}
+
+func Query(query string, args ...any) (*sql.Rows, error) {
+	return db.Query(query, args...)
+}
+
+func openDb() (*sql.DB, error) {
+	dbUrl := "file:" + path.Join(config.DataDir, "db.s3db?mode=rwc")
+	return sql.Open("sqlite3", dbUrl)
 }

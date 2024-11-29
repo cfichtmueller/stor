@@ -16,6 +16,8 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/cfichtmueller/stor/internal/config"
@@ -65,6 +67,103 @@ func Configure() {
 	increaseReferenceCountStmt = db.Prepare("UPDATE chunks SET rc = rc + 1 WHERE id = ?")
 	deleteStmt = db.Prepare("DELETE FROM chunks WHERE id = $1")
 	statsStmt = db.Prepare("SELECT COUNT(*) AS count, TOTAL(size) as size FROM chunks")
+}
+
+func Check() bool {
+	Configure()
+	fmt.Println("Checking chunks...")
+	var count int64
+	var size float64
+	if err := statsStmt.QueryRow().Scan(&count, &size); err != nil {
+		fmt.Printf("ERROR: unable to get chunk statistics: %v\n", err)
+		return false
+	}
+	fmt.Printf("Found %d chunks in database. Total size: %d\n", count, int64(size))
+	index := make(map[string]map[string]struct{})
+	offset := 0
+	for {
+		r, err := db.Query("SELECT id FROM chunks ORDER BY id LIMIT 1000 OFFSET ?", offset)
+		if err != nil {
+			fmt.Printf("ERROR: unable to scan chunks: %v\n", err)
+			return false
+		}
+		read := false
+		for r.Next() {
+			read = true
+			offset += 1
+			var id string
+			if err := r.Scan(&id); err != nil {
+				fmt.Printf("ERROR: unable to decode chunk row: %v\n", err)
+				return false
+			}
+			prefixes, ok := index[id[:2]]
+			if !ok {
+				v := make(map[string]struct{})
+				v[id[2:]] = struct{}{}
+				index[id[:2]] = v
+			} else {
+				prefixes[id[2:]] = struct{}{}
+			}
+		}
+		if !read {
+			break
+		}
+	}
+	//TODO: also check for missing chunk files
+	fmt.Printf("Scanning chunk files...")
+	dangling := make([]string, 0)
+	chunksFolder := path.Join(config.DataDir, "chunks")
+	separator := string(os.PathSeparator)
+	base := chunksFolder + separator
+	nok := false
+	log := func(format string, args ...any) {
+		if !nok {
+			fmt.Print("\n")
+			nok = true
+		}
+		fmt.Printf(format, args...)
+	}
+	if err := filepath.Walk(chunksFolder, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			log("ERROR\n  unable to access path %s: %v\n", path, err)
+			return err
+		}
+		if path == chunksFolder {
+			return nil
+		}
+		trimmedPath := strings.TrimPrefix(path, base)
+		parts := strings.Split(trimmedPath, separator)
+
+		prefix := parts[0]
+		if len(parts) == 1 { // chunk folder
+			_, ok := index[prefix]
+			if !ok {
+				log("WARNING: found dangling chunk folder %s\n", trimmedPath)
+				dangling = append(dangling, path)
+			}
+		} else { // chunk
+			if _, ok := index[prefix]; !ok {
+				log("WARNING: found dangling chunk %s\n", trimmedPath)
+				dangling = append(dangling, path)
+				return nil
+			}
+			if _, ok := index[prefix][parts[1]]; !ok {
+				log("WARNING: found dangling chunk %s\n", trimmedPath)
+				dangling = append(dangling, path)
+				return nil
+			}
+		}
+		return nil
+	}); err != nil {
+		return false
+	}
+	if nok {
+		fmt.Print("Done scanning chunk files\n")
+	} else {
+		fmt.Print("OK\n")
+	}
+
+	return true
 }
 
 func GetStats(ctx context.Context) (Stats, error) {
