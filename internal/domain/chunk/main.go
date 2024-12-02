@@ -218,14 +218,19 @@ func Delete(ctx context.Context, id string) error {
 		return ErrNotFound
 	}
 
-	if c.References == 1 {
-		if _, err := deleteStmt.ExecContext(ctx, c.ID); err != nil {
-			return fmt.Errorf("unable to delete chunk %s: %v", c.ID, err)
-		}
-		return nil
+	if c.References > 1 {
+		return DecreaseReferenceCount(ctx, id)
 	}
 
-	return DecreaseReferenceCount(ctx, id)
+	if _, err := deleteStmt.ExecContext(ctx, c.ID); err != nil {
+		return fmt.Errorf("unable to delete chunk %s: %v", c.ID, err)
+	}
+	folder := id[:2]
+	filename := id[2:]
+	if err := os.Remove(path.Join(config.DataDir, "chunks", folder, filename)); err != nil {
+		return fmt.Errorf("unable to delete chunk file: %v", err)
+	}
+	return nil
 }
 
 func IncreaseReferenceCount(ctx context.Context, chunkId string) error {
