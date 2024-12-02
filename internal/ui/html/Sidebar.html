@@ -7,9 +7,9 @@
         {{range .Items}}
         <div hx-boost="true">
             {{if .Active}}
-            <div class="inline-flex items-center text-sm font-medium py-0.5 whitespace-nowrap rounded-md h-9 px-4 hover:bg-neutral-200 bg-neutral-200 cursor-pointer">{{template "Icon" .Icon}}{{.Title}}</div>
+            <div class="inline-flex items-center text-sm font-medium py-0.5 whitespace-nowrap rounded-md h-9 w-full px-4 hover:bg-neutral-200 bg-neutral-200 cursor-pointer">{{template "Icon" .Icon}}{{.Title}}</div>
             {{else}}
-            <a class="inline-flex items-center text-sm font-medium py-0.5 whitespace-nowrap rounded-md h-9 px-4 hover:bg-neutral-200" href="{{.Link}}">{{template "Icon" .Icon}}{{.Title}}</a>
+            <a class="inline-flex items-center text-sm font-medium py-0.5 whitespace-nowrap rounded-md h-9 w-full px-4 hover:bg-neutral-200" href="{{.Link}}">{{template "Icon" .Icon}}{{.Title}}</a>
             {{end}}
         </div>
         {{end}}
