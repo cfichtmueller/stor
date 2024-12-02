@@ -4,6 +4,11 @@
 
 package ui
 
+import (
+	"fmt"
+	"net/url"
+)
+
 const (
 	dashboardLink = "/u"
 	bucketsLink   = "/u/buckets"
@@ -35,4 +40,12 @@ func (l *BucketLinks) Folder(prefix string) string {
 
 func (l *BucketLinks) Object(key string) string {
 	return l.base + "/object?key=" + key
+}
+
+func DownloadObjectLink(bucket, key string) string {
+	return fmt.Sprintf("/download?bucket=%s&key=%s", bucket, url.QueryEscape(key))
+}
+
+func OpenObjectLink(bucket, key string) string {
+	return fmt.Sprintf("/open?bucket=%s&key=%s", bucket, url.QueryEscape(key))
 }

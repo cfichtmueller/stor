@@ -6,6 +6,14 @@
         {{template "NavTabs" .NavTabs}}
         <div class="p-2">
             {{template "Details" .Details}}
+            <div class="flex justify-end gap-x-2">
+                <button class="{{template "ButtonClasses"}}">
+                    <a href="{{.OpenLink}}" target="_blank">Open</a>
+                </button>
+                <button class="{{template "ButtonClasses"}}">
+                    <a href="{{.DownloadLink}}" target="_blank">Download</a>
+                </button>
+            </div>
         </div>
     </div>
 {{template "EndLoggedInLayout"}}

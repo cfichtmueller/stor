@@ -12,9 +12,11 @@ import (
 )
 
 type objectPropertiesPageModel struct {
-	P       *bucketPageModel
-	NavTabs *NavTabsModel
-	Details DetailsModel
+	P            *bucketPageModel
+	NavTabs      *NavTabsModel
+	Details      DetailsModel
+	OpenLink     string
+	DownloadLink string
 }
 
 func RenderObjectPropertiesPage(w io.Writer, b *bucket.Bucket, o *object.Object) error {
@@ -33,6 +35,8 @@ func RenderObjectPropertiesPage(w io.Writer, b *bucket.Bucket, o *object.Object)
 				{Title: "Created at", Value: formatDateTime(o.CreatedAt)},
 			},
 		},
+		OpenLink:     OpenObjectLink(b.Name, o.Key),
+		DownloadLink: DownloadObjectLink(b.Name, o.Key),
 	}
-	return renderTemplate(w, "BucketPropertiesPage", m)
+	return renderTemplate(w, "ObjectPropertiesPage", m)
 }

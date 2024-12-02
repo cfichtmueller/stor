@@ -5,10 +5,13 @@
 package console
 
 import (
+	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
+	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/uc"
 	"github.com/cfichtmueller/stor/internal/ui"
 )
@@ -82,4 +85,48 @@ func handleRpcCreateBucket(c jug.Context) {
 		Event: "bucketsUpdated",
 		Toast: newToast("Success", "Bucket %s created", name),
 	})
+}
+
+//
+// Object
+//
+
+func handleRpcOpenObject(c jug.Context) {
+	bucketName := c.Query("bucket")
+	key, err := c.StringQuery("key")
+	if err != nil {
+		c.HandleError(err)
+		return
+	}
+
+	o, err := object.FindOne(c, bucketName, key, false)
+	if err != nil {
+		c.HandleError(err)
+		return
+	}
+
+	c.SetContentType(o.ContentType)
+	c.SetHeader("Content-Disposition", "inline")
+	c.Status(200)
+	object.Write(c, o, c.Writer())
+}
+
+func handleRpcDownloadObject(c jug.Context) {
+	bucketName := c.Query("bucket")
+	key, err := c.StringQuery("key")
+	if err != nil {
+		c.HandleError(err)
+		return
+	}
+
+	o, err := object.FindOne(c, bucketName, key, false)
+	if err != nil {
+		c.HandleError(err)
+		return
+	}
+
+	c.SetContentType(o.ContentType)
+	c.SetHeader("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filepath.Base(o.Key)))
+	c.Status(200)
+	object.Write(c, o, c.Writer())
 }

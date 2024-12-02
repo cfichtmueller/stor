@@ -63,6 +63,9 @@ func Configure() jug.Engine {
 	r.DELETE("/api-key", apiKeyFilter, handleRpcDeleteApiKey)
 	r.POST("/bucket", handleRpcCreateBucket)
 
+	console.GET("/open", authenticatedFilter, handleRpcOpenObject)
+	console.GET("/download", authenticatedFilter, handleRpcDownloadObject)
+
 	// DELETE /r/bucket
 	// POST /r/invite-user
 	// DELETE /r/user
