@@ -1,5 +1,7 @@
 # STOR
 
+[CLI](https://github.com/cfichtmueller/storctl) | [go client](https://github.com/cfichtmueller/stor-go-client)
+
 STOR is an object storage released under the MIT license.
 
 The project is very new and still working towards the 1.0.0 release.
