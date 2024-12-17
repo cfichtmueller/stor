@@ -191,6 +191,7 @@ func finishArchives() {
 
 	if err := finishArchive(ctx, a); err != nil {
 		log.Printf("unable to finish archive: %v", err)
+		failArchive(ctx, a.ID)
 		return
 	}
 
