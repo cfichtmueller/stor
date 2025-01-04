@@ -17,6 +17,12 @@ func hxRefresh(c jug.Context) {
 	}
 }
 
+func hxRedirectFn(path string) func(c jug.Context) {
+	return func(c jug.Context) {
+		hxRedirect(c, path)
+	}
+}
+
 func hxRedirect(c jug.Context, path string) {
 	if isHxRequest(c) {
 		c.SetHeader("HX-Redirect", path)

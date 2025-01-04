@@ -23,7 +23,7 @@ var (
 func bucketFilter(c jug.Context) {
 	name := c.Param("bucketName")
 	if len(name) < 3 {
-		must("render not found page", c, ui.RenderNotFoundPage(c.Writer()))
+		must("render not found page", c, ui.NotFoundPage().Render(c.Writer()))
 		c.Abort()
 		return
 	}

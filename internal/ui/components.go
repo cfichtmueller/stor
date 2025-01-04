@@ -4,7 +4,11 @@
 
 package ui
 
-import "github.com/cfichtmueller/stor/internal/domain/object"
+import (
+	"github.com/cfichtmueller/goparts/e"
+	"github.com/cfichtmueller/stor/internal/domain/bucket"
+	"github.com/cfichtmueller/stor/internal/domain/object"
+)
 
 type BreadcrumbsModel struct {
 	Crumbs []*BreadcrumbModel
@@ -58,6 +62,33 @@ type DetailModel struct {
 	Value string
 }
 
+func PathBreadcrumbs(links *BucketLinks, b *bucket.Bucket, key string) e.Node {
+	crumbs := make([]Breadcrumb, 3)
+	crumbs[0] = Breadcrumb{
+		Title: "Buckets",
+		Link:  bucketsLink,
+	}
+	crumbs[1] = Breadcrumb{Separator: true}
+	crumbs[2] = Breadcrumb{
+		Title: b.Name,
+		Link:  links.base,
+	}
+	prefix := ""
+	for _, f := range object.SplitPath(key, "/") {
+		prefix = prefix + f + "/"
+		crumbs = append(
+			crumbs,
+			Breadcrumb{Separator: true},
+			Breadcrumb{
+				Title: f,
+				Link:  links.Folder(prefix),
+			},
+		)
+	}
+	crumbs[len(crumbs)-1].Link = ""
+	return Breadcrumbs(crumbs...)
+}
+
 func newBucketBreadcrumbs(name string) *BreadcrumbsModel {
 	return NewBreadcrumbs().AddLink("Buckets", bucketsLink).AddTitle(name)
 }
@@ -70,29 +101,29 @@ func addPathCrumbs(b *BreadcrumbsModel, links *BucketLinks, key string) {
 	}
 }
 
-func newObjectsTab(link string, active bool) *NavLink {
+func ObjectsNavTab(link string, active bool) *NavLink {
 	return &NavLink{
 		Link:   link,
 		Active: active,
 		Title:  "Objects",
-		Icon:   "files",
+		Icon:   IconFiles,
 	}
 }
 
-func newPropertiesTab(link string, active bool) *NavLink {
+func PropertiesNavTab(link string, active bool) *NavLink {
 	return &NavLink{
 		Link:   link,
 		Active: active,
 		Title:  "Properties",
-		Icon:   "sliders-horizontal",
+		Icon:   IconSlidersHorizontal,
 	}
 }
 
-func newSettingsTab(link string, active bool) *NavLink {
+func SettingsNavTab(link string, active bool) *NavLink {
 	return &NavLink{
 		Link:   link,
 		Active: active,
 		Title:  "Settings",
-		Icon:   "cog",
+		Icon:   IconCog,
 	}
 }

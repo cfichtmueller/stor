@@ -7,6 +7,7 @@ package console
 import (
 	"fmt"
 
+	"github.com/cfichtmueller/goparts/e"
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/ui"
 )
@@ -40,26 +41,26 @@ func Configure() jug.Engine {
 	})
 
 	console.GET("", handleHomePage)
-	console.GET("/bootstrap", handleBootstrapPage)
-	console.POST("/bootstrap", handleBootstrap)
-	console.GET("/login", handleLoginPage)
-	console.POST("/login", handleLogin)
+	console.GET("/bootstrap", RequireNotBootstrapped, renderNode(withShell(handleBootstrapPage)))
+	console.POST("/bootstrap", RequireNotBootstrapped, renderNode(handleBootstrap))
+	console.GET("/login", renderNode(withShell(handleLoginPage)))
+	console.POST("/login", renderNode(handleLogin))
 
 	// c is for components
 	componentsGroup := console.Group("/c", authenticatedFilter, requireHxRequest)
 
-	componentsGroup.GET("/api-key-sheet", apiKeyFilter, handleRenderApiKeySheet)
-	componentsGroup.GET("/api-key-delete-dialog", apiKeyFilter, handleRenderDeleteApiKeyDialog)
-	componentsGroup.GET("/api-keys-table", handleRenderApiKeysTable)
-	componentsGroup.GET("/buckets-table", handleRenderBucketsTable)
-	componentsGroup.GET("/create-api-key-dialog", uiRenderFn("create api key dialog", ui.RenderCreateApiKeyDialog))
-	componentsGroup.GET("/create-bucket-dialog", uiRenderFn("create bucket dialog", ui.RenderCreateBucketDialog))
-	componentsGroup.GET("/dashboard-metrics", handleRenderDashboardMetrics)
+	componentsGroup.GET("/api-key-sheet", apiKeyFilter, renderNode(handleRenderApiKeySheet))
+	componentsGroup.GET("/api-key-delete-dialog", apiKeyFilter, renderNode(handleRenderDeleteApiKeyDialog))
+	componentsGroup.GET("/api-keys-table", renderNode(handleRenderApiKeysTable))
+	componentsGroup.GET("/buckets-table", renderNode(handleRenderBucketsTable))
+	componentsGroup.GET("/create-api-key-dialog", renderNodeFn(ui.CreateApiKeyDialog))
+	componentsGroup.GET("/create-bucket-dialog", renderNodeFn(ui.CreateBucketDialog))
+	componentsGroup.GET("/dashboard-metrics", renderNode(handleRenderDashboardMetrics))
 	// /c/objects-table
 
 	// r is for rpc
 	r := console.Group("/r", authenticatedFilter, requireHxRequest)
-	r.POST("/api-key", withPrincipal(handleRpcCreateApiKey))
+	r.POST("/api-key", renderNode(handleRpcCreateApiKey))
 	r.DELETE("/api-key", apiKeyFilter, handleRpcDeleteApiKey)
 	r.POST("/bucket", handleRpcCreateBucket)
 
@@ -72,22 +73,22 @@ func Configure() jug.Engine {
 	// PUT /r/profile
 
 	// u is for user pages
-	uGroup := console.Group("/u", authenticatedFilter, renderShell)
-	uGroup.GET("", handleDashboardPage)
+	uGroup := console.Group("/u", authenticatedFilter)
+	uGroup.GET("", renderNode(withShell(handleDashboardPage)))
 
-	uGroup.GET("/buckets", handleBucketsPage)
+	uGroup.GET("/buckets", renderNode(withShell(handleBucketsPage)))
 
 	uBucketGroup := uGroup.Group("/buckets/:bucketName", bucketFilter)
 	uBucketGroup.GET("", handleBucketPage)
-	uBucketGroup.GET("/objects", handleBucketObjectsPage)
-	uBucketGroup.GET("/object", handleObjectPage)
-	uBucketGroup.GET("/properties", handleBucketPropertiesPage)
-	uBucketGroup.GET("/settings", handleBucketSettingsPage)
+	uBucketGroup.GET("/objects", renderNode(withShell(handleBucketObjectsPage)))
+	uBucketGroup.GET("/object", renderNode(withShell(handleObjectPage)))
+	uBucketGroup.GET("/properties", renderNode(withShell(handleBucketPropertiesPage)))
+	uBucketGroup.GET("/settings", renderNode(withShell(handleBucketSettingsPage)))
 
 	uAdminGroup := uGroup.Group("/admin")
-	uAdminGroup.GET("", handleAdminPage)
-	uAdminGroup.GET("/api-keys", handleApiKeysPage)
-	uAdminGroup.GET("/users", handleUsersPage)
+	uAdminGroup.GET("", hxRedirectFn("/u/admin/users"))
+	uAdminGroup.GET("/api-keys", renderNode(withShell(handleApiKeysPage)))
+	uAdminGroup.GET("/users", renderNode(withShell(handleUsersPage)))
 
 	return console
 }
@@ -119,19 +120,19 @@ func must(what string, c jug.Context, err error) bool {
 	return false
 }
 
-func renderShell(c jug.Context) {
-	includeShell := c.GetHeader("Hx-Boosted") != "true"
-	if includeShell {
-		if !must("render shell start", c, ui.RenderShellStart(c.Writer())) {
-			c.Abort()
-			return
+func withShell(h NodeHandler) NodeHandler {
+	return func(c jug.Context) (e.Node, error) {
+		includeShell := c.GetHeader("Hx-Boosted") != "true"
+		n, err := h(c)
+		if err != nil {
+			return nil, err
 		}
-	}
-	c.Next()
-	if includeShell {
-		if !must("render shell end", c, ui.RenderShellEnd(c.Writer())) {
-			c.Abort()
-			return
+		if n == nil {
+			return nil, nil
 		}
+		if includeShell {
+			return ui.Shell("", n), nil
+		}
+		return n, nil
 	}
 }

@@ -5,24 +5,22 @@
 package ui
 
 import (
-	"io"
-
+	"github.com/cfichtmueller/goparts/e"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
-	"github.com/cfichtmueller/stor/internal/util"
 )
 
 type ApiKeysPageData struct {
 	Keys []*apikey.ApiKey
 }
 
-type apiKeysPageModel struct {
-	Layout adminPageModel
-	Keys   []apiKeyModel
-}
-
-func RenderApiKeysPage(w io.Writer, data ApiKeysPageData) error {
-	return renderTemplate(w, "ApiKeysPage", apiKeysPageModel{
-		Layout: newAdminPageModel(admin_tab_active_api_keys),
-		Keys:   util.MapMany(data.Keys, newApiKeyModel),
-	})
+func ApiKeysPage(data *ApiKeysPageData) e.Node {
+	hasApiKeys := len(data.Keys) > 0
+	return AdminPageLayout(admin_tab_active_api_keys,
+		e.Div(
+			e.HXTrigger("apiKeysUpdated from:body"),
+			e.HXGet("/c/api-keys-table"),
+			e.Iff(hasApiKeys, e.F(ApiKeysTable, data.Keys)),
+			e.Iff(!hasApiKeys, ApiKeysEmptyState),
+		),
+	)
 }

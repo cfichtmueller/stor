@@ -5,38 +5,50 @@
 package ui
 
 import (
-	"io"
-
+	"github.com/cfichtmueller/goparts/e"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 )
 
-type objectPropertiesPageModel struct {
-	P            *bucketPageModel
-	NavTabs      *NavTabsModel
-	Details      DetailsModel
-	OpenLink     string
-	DownloadLink string
-}
-
-func RenderObjectPropertiesPage(w io.Writer, b *bucket.Bucket, o *object.Object) error {
-	p := newBucketPageModel(b)
+func ObjectPropertiesPage(b *bucket.Bucket, o *object.Object) e.Node {
 	links := NewBucketLinks(b.Name)
-	p.Breadcrumbs.Last().Link = links.Objects
-	addPathCrumbs(p.Breadcrumbs, links, o.Key)
-	p.Breadcrumbs.Last().Link = ""
-	m := objectPropertiesPageModel{
-		P:       p,
-		NavTabs: newObjectNavTabs(links.Folder(object.PathPrefix(o.Key, "/")), "properties"),
-		Details: DetailsModel{
-			Details: []DetailModel{
-				{Title: "Key", Value: o.Key},
-				{Title: "Size", Value: formatBytes(o.Size)},
-				{Title: "Created at", Value: formatDateTime(o.CreatedAt)},
-			},
-		},
-		OpenLink:     OpenObjectLink(b.Name, o.Key),
-		DownloadLink: DownloadObjectLink(b.Name, o.Key),
-	}
-	return renderTemplate(w, "ObjectPropertiesPage", m)
+	return LoggedInLayout(
+		appSidebar(app_sidebar_active_buckets),
+		PathBreadcrumbs(links, b, o.Key),
+		PageTitle(""),
+		e.Div(
+			e.Class("flex flex-col w-full border rounded-md bg-white"),
+			NavTabs(
+				ObjectsNavTab(links.Folder(object.PathPrefix(o.Key, "/")), false),
+				PropertiesNavTab("", true),
+			),
+			e.Div(
+				e.Class("p-2"),
+				Details("",
+					Detail("Key", o.Key),
+					Detail("Size", formatBytes(o.Size)),
+					Detail("Created at", formatDateTime(o.CreatedAt)),
+				),
+				e.Div(
+					e.Class("flex justify-end gap-x-2"),
+					e.Button(
+						e.Class(cn(btn, "shadow")),
+						e.A(
+							e.Href(OpenObjectLink(b.Name, o.Key)),
+							e.TargetBlank(),
+							e.Raw("Open"),
+						),
+					),
+					e.Button(
+						e.Class(cn(btn, "shadow")),
+						e.A(
+							e.Href(DownloadObjectLink(b.Name, o.Key)),
+							e.TargetBlank(),
+							e.Raw("Download"),
+						),
+					),
+				),
+			),
+		),
+	)
 }

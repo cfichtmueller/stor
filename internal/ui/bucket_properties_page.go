@@ -5,31 +5,22 @@
 package ui
 
 import (
-	"io"
-
+	"github.com/cfichtmueller/goparts/e"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 )
 
-type bucketPropertiesPageModel struct {
-	P       *bucketPageModel
-	NavTabs *NavTabsModel
-	Bucket  bucketModel
-	Details DetailsModel
-}
-
-func RenderBucketPropertiesPage(w io.Writer, b *bucket.Bucket) error {
-	m := bucketPropertiesPageModel{
-		P:       newBucketPageModel(b),
-		NavTabs: newBucketNavTabs(b.Name, "properties"),
-		Bucket:  newBucketModel(b),
-		Details: DetailsModel{
-			Details: []DetailModel{
-				{Title: "Name", Value: b.Name},
-				{Title: "Objects", Value: formatInt(int(b.Objects))},
-				{Title: "Size", Value: formatBytes(b.Size)},
-				{Title: "Created at", Value: formatDateTime(b.CreatedAt)},
-			},
-		},
-	}
-	return renderTemplate(w, "BucketPropertiesPage", m)
+func BucketPropertiesPage(b *bucket.Bucket) e.Node {
+	links := NewBucketLinks(b.Name)
+	return BucketPage(
+		links,
+		bucket_navtabs_active_properties,
+		PathBreadcrumbs(links, b, ""),
+		PageTitle(""),
+		Details("",
+			Detail("Name", b.Name),
+			Detail("Objects", formatInt(int(b.Objects))),
+			Detail("Size", formatBytes(b.Size)),
+			Detail("Created at", formatDateTime(b.CreatedAt)),
+		),
+	)
 }

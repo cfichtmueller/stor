@@ -5,8 +5,7 @@
 package ui
 
 import (
-	"io"
-
+	"github.com/cfichtmueller/goparts/e"
 	"github.com/cfichtmueller/stor/internal/domain/user"
 )
 
@@ -14,14 +13,9 @@ type UsersPageData struct {
 	Users []*user.User
 }
 
-type usersPageModel struct {
-	Layout adminPageModel
-	Users  []*user.User
-}
-
-func RenderUsersPage(w io.Writer, d UsersPageData) error {
-	return renderTemplate(w, "UsersPage", usersPageModel{
-		Layout: newAdminPageModel(admin_tab_active_users),
-		Users:  d.Users,
-	})
+func UsersPage(d *UsersPageData) e.Node {
+	return AdminPageLayout(
+		admin_tab_active_users,
+		UsersTable(d.Users),
+	)
 }

@@ -5,28 +5,31 @@
 package ui
 
 import (
-	"io"
-
+	"github.com/cfichtmueller/goparts/e"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
-	"github.com/cfichtmueller/stor/internal/util"
 )
 
 type BucketObjectsPageData struct {
 	Bucket  *bucket.Bucket
+	Prefix  string
 	Objects []ObjectData
 }
 
-type bucketObjectsPageModel struct {
-	P       *bucketPageModel
-	NavTabs NavTabsModel
-	Objects []objectModel
-}
-
-func RenderBucketObjectsPage(w io.Writer, d BucketObjectsPageData) error {
-	m := &bucketObjectsPageModel{
-		P:       newBucketPageModel(d.Bucket),
-		NavTabs: *newBucketNavTabs(d.Bucket.Name, "objects"),
-		Objects: util.MapMany(d.Objects, newObjectModel),
-	}
-	return renderTemplate(w, "BucketObjectsPage", m)
+func BucketObjectsPage(d BucketObjectsPageData) e.Node {
+	hasObjects := len(d.Objects) > 0
+	links := NewBucketLinks(d.Bucket.Name)
+	return LoggedInLayout(
+		appSidebar(app_sidebar_active_buckets),
+		PathBreadcrumbs(links, d.Bucket, d.Prefix),
+		PageTitle(""),
+		e.Div(
+			e.Class("flex flex-col w-full border rounded-md bg-white"),
+			BucketNavTabs(links, bucket_navtabs_active_objects),
+			e.Div(
+				e.Class("p-2"),
+				e.Iff(hasObjects, e.F(ObjectsTable, d.Objects)),
+				e.Iff(!hasObjects, BucketEmptyState),
+			),
+		),
+	)
 }

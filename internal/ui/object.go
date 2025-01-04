@@ -31,8 +31,8 @@ func newObjectModel(d ObjectData) objectModel {
 func newObjectNavTabs(objectsLink, active string) *NavTabsModel {
 	return &NavTabsModel{
 		Tabs: []*NavLink{
-			newObjectsTab(objectsLink, active == "objects"),
-			newPropertiesTab("", active == "properties"),
+			ObjectsNavTab(objectsLink, active == "objects"),
+			PropertiesNavTab("", active == "properties"),
 		},
 	}
 }

@@ -4,12 +4,8 @@
 
 package ui
 
-import (
-	"github.com/cfichtmueller/goparts/e"
-)
+import "github.com/cfichtmueller/goparts/e"
 
-func NotFoundPage() e.Node {
-	return e.Div(
-		e.Raw("NOT FOUND"),
-	)
+func bytesText(b int64) e.Node {
+	return e.Text(formatBytes(b))
 }

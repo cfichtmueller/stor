@@ -6,9 +6,6 @@ package ui
 
 import (
 	"embed"
-	"fmt"
-	"html/template"
-	"io"
 	"log"
 
 	"github.com/cfichtmueller/jug"
@@ -21,9 +18,6 @@ var (
 	js embed.FS
 	//go:embed img/*
 	img embed.FS
-	//go:embed html/*
-	htmlFiles embed.FS
-	templates = template.Must(template.New("").ParseFS(htmlFiles, "html/*.html"))
 )
 
 func RenderCss(ctx jug.Context, name string) {
@@ -47,19 +41,4 @@ func renderFile(ctx jug.Context, fs embed.FS, name, contentType string) {
 	}
 	ctx.SetHeader("Content-Type", contentType)
 	ctx.Writer().Write(b)
-}
-
-func RenderShellStart(w io.Writer) error {
-	return renderTemplate(w, "ShellStart", nil)
-}
-
-func RenderShellEnd(w io.Writer) error {
-	return renderTemplate(w, "ShellEnd", nil)
-}
-
-func renderTemplate(w io.Writer, name string, data any) error {
-	if err := templates.ExecuteTemplate(w, name, data); err != nil {
-		return fmt.Errorf("unable to render template %s: %v", name, err)
-	}
-	return nil
 }

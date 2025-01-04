@@ -5,8 +5,7 @@
 package console
 
 import (
-	"io"
-
+	"github.com/cfichtmueller/goparts/e"
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/config"
 	"github.com/cfichtmueller/stor/internal/disk"
@@ -20,78 +19,71 @@ import (
 // API Key
 //
 
-func handleRenderApiKeySheet(c jug.Context) {
+func handleRenderApiKeySheet(c jug.Context) (e.Node, error) {
 	key := contextGetApiKey(c)
-	must("render api key sheet", c, ui.RenderApiKeySheet(c.Writer(), key))
+	return ui.ApiKeySheet(key), nil
 }
 
-func handleRenderApiKeysTable(c jug.Context) {
+func handleRenderApiKeysTable(c jug.Context) (e.Node, error) {
 	keys, err := apikey.List(c)
-	if !must("find api keys", c, err) {
-		return
+	if err != nil {
+		return nil, err
 	}
 
 	if len(keys) == 0 {
-		must("render api keys empty state", c, ui.RenderApiKeysEmptyState(c.Writer()))
-		return
+		return ui.ApiKeysEmptyState(), nil
 	}
-
-	must("render api keys table", c, ui.RenderApiKeysTable(c.Writer(), keys))
+	return ui.ApiKeysTable(keys), nil
 }
 
-func handleRenderDeleteApiKeyDialog(c jug.Context) {
+func handleRenderDeleteApiKeyDialog(c jug.Context) (e.Node, error) {
 	key := contextGetApiKey(c)
-	must("render delete api key dialog", c, ui.RenderDeleteApiKeyDialog(c.Writer(), key))
+	return ui.DeleteApiKeyDialog(key), nil
 }
 
 //
 // Bucket
 //
 
-func handleRenderBucketsTable(c jug.Context) {
+func handleRenderBucketsTable(c jug.Context) (e.Node, error) {
 	b, err := bucket.FindMany(c, &bucket.Filter{})
-	if !must("find buckets", c, err) {
-		return
+	if err != nil {
+		return nil, err
 	}
 
 	if len(b) == 0 {
-		must("render buckets table", c, ui.RenderBucketsEmptyState(c.Writer()))
-		return
+		return ui.BucketEmptyState(), nil
 	}
-
-	must("render buckets table", c, ui.RenderBucketsTable(c.Writer(), b))
+	return ui.BucketsTable(b), nil
 }
 
 //
 // Dashboard
 //
 
-func handleRenderDashboardMetrics(c jug.Context) {
+func handleRenderDashboardMetrics(c jug.Context) (e.Node, error) {
 	info, err := disk.GetInfo(config.DataDir)
 	if err != nil {
-		c.HandleError(err)
-		return
+		return nil, err
 	}
 	bucketStats, err := bucket.GetStats(c)
 	if err != nil {
-		c.HandleError(err)
-		return
+		return nil, err
 	}
 	chunkStats, err := chunk.GetStats(c)
 	if err != nil {
-		c.HandleError(err)
-		return
+		return nil, err
 	}
 
-	must("render dashboard metrics", c, ui.RenderDashboardMetrics(c.Writer(), ui.DashboardData{
+	return ui.DashboardMetrics(ui.DashboardData{
 		DiskInfo:    info,
 		StorageSize: chunkStats.TotalSize,
 		BucketStats: bucketStats,
-	}))
+	}), nil
 }
 
-func uiRenderFn(name string, f func(w io.Writer) error) func(c jug.Context) {
-	return func(c jug.Context) {
-		must("render "+name, c, f(c.Writer()))
-	}
+func renderNodeFn(f func() e.Node) func(c jug.Context) {
+	return renderNode(func(c jug.Context) (e.Node, error) {
+		return f(), nil
+	})
 }

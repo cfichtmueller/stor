@@ -4,12 +4,11 @@
 
 package ui
 
-import (
-	"github.com/cfichtmueller/goparts/e"
-)
+import "github.com/cfichtmueller/goparts/e"
 
-func NotFoundPage() e.Node {
+func PageTitle(title string) e.Node {
 	return e.Div(
-		e.Raw("NOT FOUND"),
+		e.Class("text-2xl font-medium pb-4"),
+		e.Text(title),
 	)
 }

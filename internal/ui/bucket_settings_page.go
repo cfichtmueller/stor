@@ -5,19 +5,19 @@
 package ui
 
 import (
-	"io"
-
+	"github.com/cfichtmueller/goparts/e"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 )
 
-type bucketSettingsPageModel struct {
-	P       *bucketPageModel
-	NavTabs *NavTabsModel
-}
-
-func RenderBucketSettingsPage(w io.Writer, b *bucket.Bucket) error {
-	return renderTemplate(w, "BucketSettingsPage", bucketSettingsPageModel{
-		P:       newBucketPageModel(b),
-		NavTabs: newBucketNavTabs(b.Name, "settings"),
-	})
+func BucketSettingsPage(b *bucket.Bucket) e.Node {
+	links := NewBucketLinks(b.Name)
+	return BucketPage(
+		links,
+		bucket_navtabs_active_settings,
+		PathBreadcrumbs(links, b, ""),
+		PageTitle(""),
+		e.Div(
+			e.Text("Settings"),
+		),
+	)
 }

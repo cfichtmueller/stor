@@ -3,6 +3,7 @@ module github.com/cfichtmueller/stor
 go 1.23.0
 
 require (
+	github.com/cfichtmueller/goparts v0.1.0
 	github.com/cfichtmueller/jug v0.4.0
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/spf13/cobra v1.8.1

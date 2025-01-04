@@ -7,6 +7,7 @@ package console
 import (
 	"errors"
 
+	"github.com/cfichtmueller/goparts/e"
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/config"
 	"github.com/cfichtmueller/stor/internal/disk"
@@ -20,36 +21,34 @@ import (
 	"github.com/cfichtmueller/stor/internal/ui"
 )
 
-func handleDashboardPage(c jug.Context) {
+func handleDashboardPage(c jug.Context) (e.Node, error) {
 	info, err := disk.GetInfo(config.DataDir)
 	if err != nil {
-		c.HandleError(err)
-		return
+		return nil, err
 	}
 	bucketStats, err := bucket.GetStats(c)
 	if err != nil {
-		c.HandleError(err)
-		return
+		return nil, err
 	}
 	chunkStats, err := chunk.GetStats(c)
 	if err != nil {
-		c.HandleError(err)
-		return
+		return nil, err
 	}
 
-	must("render dashboard page", c, ui.RenderDashboardPage(c.Writer(), ui.DashboardData{
+	return ui.DashboardPage(ui.DashboardData{
 		DiskInfo:    info,
 		StorageSize: chunkStats.TotalSize,
 		BucketStats: bucketStats,
-	}))
+	}), nil
 }
 
-func handleBucketsPage(c jug.Context) {
+func handleBucketsPage(c jug.Context) (e.Node, error) {
 	b, err := bucket.FindMany(c, &bucket.Filter{})
-	if !must("find buckets", c, err) {
-		return
+	if err != nil {
+		return nil, err
 	}
-	must("render buckets page", c, ui.RenderBucketsPage(c.Writer(), b))
+
+	return ui.BucketsPage(b), nil
 }
 
 func handleBucketPage(c jug.Context) {
@@ -58,14 +57,14 @@ func handleBucketPage(c jug.Context) {
 	c.SetHeader("Location", "/u/buckets/"+b.Name+"/files")
 }
 
-func handleBucketObjectsPage(c jug.Context) {
+func handleBucketObjectsPage(c jug.Context) (e.Node, error) {
 	b := contextGetBucket(c)
 	delimiter := "/"
 	prefix := c.Query("prefix")
 	prefixLen := len(prefix)
 	r, err := uc.ObjectPrefixSearch(c, b, delimiter, prefix, "", 1000)
-	if !must("find objects", c, err) {
-		return
+	if err != nil {
+		return nil, err
 	}
 	bucketLinks := ui.NewBucketLinks(b.Name)
 	objects := make([]ui.ObjectData, 0, len(r.CommonPrefixes)+len(r.Objects)+1)
@@ -88,67 +87,53 @@ func handleBucketObjectsPage(c jug.Context) {
 			Href: bucketLinks.Object(o.Key),
 		})
 	}
-	if prefix == "" {
-		must("render bucket objects page", c, ui.RenderBucketObjectsPage(c.Writer(), ui.BucketObjectsPageData{
-			Bucket:  b,
-			Objects: objects,
-		}))
-	} else {
-		must("render bucket folder page", c, ui.RenderBucketFolderPage(c.Writer(), ui.BucketFolderPageData{
-			Bucket:  b,
-			Prefix:  prefix,
-			Objects: objects,
-		}))
-	}
+	return ui.BucketObjectsPage(ui.BucketObjectsPageData{
+		Bucket:  b,
+		Prefix:  prefix,
+		Objects: objects,
+	}), nil
 }
 
-func handleBucketPropertiesPage(c jug.Context) {
+func handleBucketPropertiesPage(c jug.Context) (e.Node, error) {
 	b := contextGetBucket(c)
-	must("render bucket properties page", c, ui.RenderBucketPropertiesPage(c.Writer(), b))
+	return ui.BucketPropertiesPage(b), nil
 }
 
-func handleBucketSettingsPage(c jug.Context) {
+func handleBucketSettingsPage(c jug.Context) (e.Node, error) {
 	b := contextGetBucket(c)
-	must("render bucket settings page", c, ui.RenderBucketSettingsPage(c.Writer(), b))
+	return ui.BucketSettingsPage(b), nil
 }
 
-func handleObjectPage(c jug.Context) {
+func handleObjectPage(c jug.Context) (e.Node, error) {
 	key := c.Query("key")
 	b := contextGetBucket(c)
 	o, err := object.FindOne(c, b.Name, key, false)
 	if err != nil && errors.Is(err, ec.NoSuchKey) {
-		must("render not found page", c, ui.RenderNotFoundPage(c.Writer()))
-		return
+		return ui.NotFoundPage(), nil
 	}
-	if !must("find object", c, err) {
-		return
+	if err != nil {
+		return nil, err
 	}
-	must("render object page", c, ui.RenderObjectPropertiesPage(c.Writer(), b, o))
+	return ui.ObjectPropertiesPage(b, o), nil
 }
 
-func handleAdminPage(c jug.Context) {
-	hxRedirect(c, "/u/admin/users")
-}
-
-func handleUsersPage(c jug.Context) {
+func handleUsersPage(c jug.Context) (e.Node, error) {
 	u, err := user.List(c)
 	if err != nil {
-		c.HandleError(err)
-		return
+		return nil, err
 	}
-	must("render users page", c, ui.RenderUsersPage(c.Writer(), ui.UsersPageData{
+	return ui.UsersPage(&ui.UsersPageData{
 		Users: u,
-	}))
+	}), nil
 }
 
-func handleApiKeysPage(c jug.Context) {
+func handleApiKeysPage(c jug.Context) (e.Node, error) {
 	keys, err := apikey.List(c)
 	if err != nil {
-		c.HandleError(err)
-		return
+		return nil, err
 	}
 
-	must("render api keys page", c, ui.RenderApiKeysPage(c.Writer(), ui.ApiKeysPageData{
+	return ui.ApiKeysPage(&ui.ApiKeysPageData{
 		Keys: keys,
-	}))
+	}), nil
 }

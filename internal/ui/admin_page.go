@@ -4,38 +4,31 @@
 
 package ui
 
+import "github.com/cfichtmueller/goparts/e"
+
 var (
 	admin_tab_active_api_keys = "apiKeys"
 	admin_tab_active_users    = "users"
 )
 
-type adminPageModel struct {
-	PageHeader pageHeaderModel
-	AppSidebar SidebarModel
-	NavTabs    *NavTabsModel
-}
-
-func newAdminPageModel(activeTab string) adminPageModel {
-	return adminPageModel{
-		PageHeader: pageHeaderModel{
-			Title: "Admin",
-		},
-		AppSidebar: appSidebarModel(app_sidebar_active_admin),
-		NavTabs: &NavTabsModel{
-			Tabs: []*NavLink{
-				{
-					Link:   usersLink,
-					Active: activeTab == admin_tab_active_users,
-					Title:  "Users",
-					Icon:   "users-round",
-				},
-				{
-					Link:   apiKeysLink,
-					Active: activeTab == admin_tab_active_api_keys,
-					Title:  "API Keys",
-					Icon:   "key-round",
-				},
+func AdminPageLayout(active string, children ...e.Node) e.Node {
+	return TabbedPageLayout(
+		appSidebar(app_sidebar_active_admin),
+		PageHeader("Admin", ""),
+		NavTabs(
+			&NavLink{
+				Link:   usersLink,
+				Active: active == admin_tab_active_users,
+				Title:  "Users",
+				Icon:   IconUsersRound,
 			},
-		},
-	}
+			&NavLink{
+				Link:   apiKeysLink,
+				Active: active == admin_tab_active_api_keys,
+				Title:  "API Keys",
+				Icon:   IconKeyRound,
+			},
+		),
+		children...,
+	)
 }

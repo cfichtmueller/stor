@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/cfichtmueller/goparts/e"
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
 	"github.com/cfichtmueller/stor/internal/domain/object"
@@ -20,11 +21,11 @@ import (
 // API Key
 //
 
-func handleRpcCreateApiKey(c jug.Context, principal string) {
+func handleRpcCreateApiKey(c jug.Context) (e.Node, error) {
+	principal := contextMustGetPrincipal(c)
 	var description string
 	if err := bindFormData(c, "description", &description); err != nil {
-		c.HandleError(err)
-		return
+		return nil, err
 	}
 
 	key, plain, err := apikey.Create(c, principal, apikey.CreateCommand{
@@ -34,8 +35,7 @@ func handleRpcCreateApiKey(c jug.Context, principal string) {
 
 	if err != nil {
 		//TODO: give actual feedback
-		c.HandleError(err)
-		return
+		return nil, err
 	}
 
 	hxTrigger(c, hxTriggerModel{
@@ -47,7 +47,7 @@ func handleRpcCreateApiKey(c jug.Context, principal string) {
 	})
 	hxReswap(c, "outerHTML")
 
-	must("render api key created dialog", c, ui.RenderApiKeyCreatedDialog(c.Writer(), key, plain))
+	return ui.ApiKeyCreatedDialog(key, plain), nil
 }
 
 func handleRpcDeleteApiKey(c jug.Context) {

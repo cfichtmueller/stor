@@ -4,12 +4,12 @@
 
 package ui
 
-import (
-	"github.com/cfichtmueller/goparts/e"
-)
+import "github.com/cfichtmueller/goparts/e"
 
-func NotFoundPage() e.Node {
-	return e.Div(
-		e.Raw("NOT FOUND"),
+func FormLabel(htmlFor, text string) e.Node {
+	return e.Label(
+		e.For(htmlFor),
+		srOnly(),
+		e.Text(text),
 	)
 }

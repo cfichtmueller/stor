@@ -4,12 +4,6 @@
 
 package ui
 
-import (
-	"github.com/cfichtmueller/goparts/e"
-)
-
-func NotFoundPage() e.Node {
-	return e.Div(
-		e.Raw("NOT FOUND"),
-	)
+func identity[T any](v T) T {
+	return v
 }

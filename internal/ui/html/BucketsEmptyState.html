@@ -1,6 +1,0 @@
-{{define "BucketsEmptyState"}}
-<div class="flex flex-col justify-center items-center min-h-96">
-    <img src="/img/empty.png" class="h-32 mb-8" aria-hidden="true" />
-    <button class="{{template "cnPrimaryButton"}}" hx-get="/c/create-bucket-dialog" hx-target="body" hx-swap="beforeend">Create your first bucket</button>
-</div>
-{{end}}
