@@ -67,7 +67,7 @@ func hxTrigger(c jug.Context, m hxTriggerModel) {
 
 	b, err := json.Marshal(d)
 	if err != nil {
-		panic(fmt.Errorf("unable to marshal htmx trigger: %v", err))
+		panic(fmt.Errorf("unable to marshal htmx trigger: %w", err))
 	}
 	c.SetHeader("HX-Trigger", string(b))
 }

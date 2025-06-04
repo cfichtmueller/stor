@@ -15,7 +15,7 @@ func RandomStringFromAlphabet(alphabet string, length int) string {
 	bytes := make([]byte, length)
 	_, err := rand.Read(bytes)
 	if err != nil {
-		panic(fmt.Errorf("couldn't create random: %v", err))
+		panic(fmt.Errorf("unable to create random: %w", err))
 	}
 	chars := strings.Split(alphabet, "")
 	cap := len(alphabet) - 1

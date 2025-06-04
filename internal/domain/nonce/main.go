@@ -52,7 +52,7 @@ func Create(ctx context.Context, bucket, key string, cmd CreateCommand) (*Nonce,
 		ExpiresAt: domain.TimeNow().Add(cmd.TTL),
 	}
 	if _, err := createStmt.ExecContext(ctx, nonce.ID, nonce.Bucket, nonce.Key, nonce.ExpiresAt); err != nil {
-		return nil, fmt.Errorf("unable to create nonce record: %v", err)
+		return nil, fmt.Errorf("unable to create nonce record: %w", err)
 	}
 	return nonce, nil
 }
@@ -63,7 +63,7 @@ func Get(ctx context.Context, id string) (*Nonce, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}
-		return nil, fmt.Errorf("unable to find nonce: %v", err)
+		return nil, fmt.Errorf("unable to find nonce: %w", err)
 	}
 	if nonce.ExpiresAt.Before(time.Now()) {
 		return nil, ErrNotFound
@@ -78,7 +78,7 @@ func GetAndInvalidate(ctx context.Context, id string) (*Nonce, error) {
 	}
 
 	if _, err := deleteStmt.ExecContext(ctx, id); err != nil {
-		return nil, fmt.Errorf("unable to delete nonce: %v", err)
+		return nil, fmt.Errorf("unable to delete nonce: %w", err)
 	}
 
 	return n, nil

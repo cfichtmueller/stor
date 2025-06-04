@@ -65,7 +65,7 @@ func Create(ctx context.Context, principal string, cmd CreateCommand) (*ApiKey, 
 	plainKey := prefix + suffix
 	hash, err := bcrypt.GenerateFromPassword([]byte(plainKey), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, "", fmt.Errorf("unable to hash API key: %v", err)
+		return nil, "", fmt.Errorf("unable to hash API key: %w", err)
 	}
 
 	k := &ApiKey{
@@ -88,7 +88,7 @@ func Create(ctx context.Context, principal string, cmd CreateCommand) (*ApiKey, 
 		k.CreatedBy,
 		k.ExpiresAt,
 	); err != nil {
-		return nil, "", fmt.Errorf("unable to save API key: %v", err)
+		return nil, "", fmt.Errorf("unable to save API key: %w", err)
 	}
 
 	return k, plainKey, nil
@@ -97,7 +97,7 @@ func Create(ctx context.Context, principal string, cmd CreateCommand) (*ApiKey, 
 func List(ctx context.Context) ([]*ApiKey, error) {
 	rows, err := listStmt.QueryContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable to list api keys: %v", err)
+		return nil, fmt.Errorf("unable to list api keys: %w", err)
 	}
 	keys := make([]*ApiKey, 0)
 	for rows.Next() {
@@ -111,7 +111,7 @@ func List(ctx context.Context) ([]*ApiKey, error) {
 			&k.CreatedBy,
 			&k.ExpiresAt,
 		); err != nil {
-			return nil, fmt.Errorf("unable to decode api key: %v", err)
+			return nil, fmt.Errorf("unable to decode api key: %w", err)
 		}
 		keys = append(keys, &k)
 	}
@@ -137,7 +137,7 @@ func Authenticate(ctx context.Context, key string) (*ApiKey, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ec.InvalidCredentials
 		}
-		return nil, fmt.Errorf("unable to find api key: %v", err)
+		return nil, fmt.Errorf("unable to find api key: %w", err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword(k.hash, []byte(key)); err != nil {

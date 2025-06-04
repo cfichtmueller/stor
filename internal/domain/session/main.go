@@ -58,7 +58,7 @@ func Create(ctx context.Context, user, ipAddress string) (*Session, error) {
 	}
 
 	if _, err := createStmt.ExecContext(ctx, s.ID, s.User, s.IpAddress, s.CreatedAt, s.LastSeenAt, s.ExpiresAt); err != nil {
-		return nil, fmt.Errorf("unable to create session record: %v", err)
+		return nil, fmt.Errorf("unable to create session record: %w", err)
 	}
 
 	return s, nil
@@ -67,7 +67,7 @@ func Create(ctx context.Context, user, ipAddress string) (*Session, error) {
 func List(ctx context.Context, user string) ([]*Session, error) {
 	rows, err := listStmt.QueryContext(ctx, user)
 	if err != nil {
-		return nil, fmt.Errorf("unable to query sessions: %v", err)
+		return nil, fmt.Errorf("unable to query sessions: %w", err)
 	}
 	res := make([]*Session, 0)
 	for rows.Next() {
@@ -95,14 +95,14 @@ func Get(ctx context.Context, id string) (*Session, error) {
 func MarkSeen(ctx context.Context, id string) error {
 	now := domain.TimeNow()
 	if _, err := updateStmt.ExecContext(ctx, now, now.Add(TTL), id); err != nil {
-		return fmt.Errorf("unable to update session record: %v", err)
+		return fmt.Errorf("unable to update session record: %w", err)
 	}
 	return nil
 }
 
 func Delete(ctx context.Context, id string) error {
 	if _, err := deleteStmt.ExecContext(ctx, id); err != nil {
-		return fmt.Errorf("unable to delete session: %v", err)
+		return fmt.Errorf("unable to delete session: %w", err)
 	}
 	return nil
 }
@@ -117,7 +117,7 @@ func decode(row Scanner) (*Session, error) {
 		&s.LastSeenAt,
 		&s.ExpiresAt,
 	); err != nil {
-		return nil, fmt.Errorf("unable to decode session: %v", err)
+		return nil, fmt.Errorf("unable to decode session: %w", err)
 	}
 	return &s, nil
 }

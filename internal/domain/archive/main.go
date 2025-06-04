@@ -84,7 +84,7 @@ func Create(ctx context.Context, cmd CreateCommand) (string, error) {
 	}
 	id := domain.RandomId()
 	if _, err := createStmt.ExecContext(ctx, id, cmd.Bucket, cmd.Key, cmd.Type, StatePending); err != nil {
-		return "", fmt.Errorf("unable to create archive record: %v", err)
+		return "", fmt.Errorf("unable to create archive record: %w", err)
 	}
 	return id, nil
 }
@@ -92,7 +92,7 @@ func Create(ctx context.Context, cmd CreateCommand) (string, error) {
 func Exists(ctx context.Context, bucket, key, id string) (bool, error) {
 	var count int
 	if err := existsStmt.QueryRowContext(ctx, id, bucket, key, false).Scan(&count); err != nil {
-		return false, fmt.Errorf("unable to query archives: %v", err)
+		return false, fmt.Errorf("unable to query archives: %w", err)
 	}
 	return count > 0, nil
 }
@@ -103,7 +103,7 @@ func FindOne(ctx context.Context, bucket, key, id string) (*Archive, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ec.NoSuchArchive
 		}
-		return nil, fmt.Errorf("unable to find archive: %v", err)
+		return nil, fmt.Errorf("unable to find archive: %w", err)
 	}
 	if arch.Bucket != bucket || arch.Key != key {
 		return nil, ec.NoSuchArchive
@@ -120,7 +120,7 @@ func AddEntries(ctx context.Context, a *Archive, entries []Entry) error {
 	//TODO: should be bulk insert
 	for _, e := range entries {
 		if _, err := insertEntryStmt.ExecContext(ctx, domain.RandomId(), a.ID, e.Key, e.Name); err != nil {
-			return fmt.Errorf("unable to insert entry record: %v", err)
+			return fmt.Errorf("unable to insert entry record: %w", err)
 		}
 	}
 	return nil
@@ -141,7 +141,7 @@ func Complete(ctx context.Context, a *Archive) error {
 	}
 
 	if _, err := updateStmt.ExecContext(ctx, StateProcessing, false, a.ID); err != nil {
-		return fmt.Errorf("unable to update archive record: %v", err)
+		return fmt.Errorf("unable to update archive record: %w", err)
 	}
 	finishFlag = true
 
@@ -157,11 +157,11 @@ func Abort(ctx context.Context, a *Archive) error {
 
 func delete(ctx context.Context, id string) error {
 	if _, err := deleteStmt.ExecContext(ctx, id); err != nil {
-		return fmt.Errorf("unable to delete archive record: %v", err)
+		return fmt.Errorf("unable to delete archive record: %w", err)
 	}
 
 	if _, err := deleteEntriesStmt.ExecContext(ctx, id); err != nil {
-		return fmt.Errorf("unable to delete archive entries: %v", err)
+		return fmt.Errorf("unable to delete archive entries: %w", err)
 	}
 	return nil
 }
@@ -211,13 +211,13 @@ func finishArchive(ctx context.Context, arch *Archive) error {
 	for {
 		rows, err := findEntriesStmt.QueryContext(ctx, arch.ID, startAfter, 1000)
 		if err != nil {
-			return fmt.Errorf("unable to list archive entries: %v", err)
+			return fmt.Errorf("unable to list archive entries: %w", err)
 		}
 		entries := make([]Entry, 0)
 		for rows.Next() {
 			var entry Entry
 			if err := rows.Scan(&entry.Key, &entry.Name); err != nil {
-				return fmt.Errorf("unable to scan entry row: %v", err)
+				return fmt.Errorf("unable to scan entry row: %w", err)
 			}
 			entries = append(entries, entry)
 		}
@@ -237,10 +237,10 @@ func finishArchive(ctx context.Context, arch *Archive) error {
 
 			writer, err := zipWriter.Create(e.Name)
 			if err != nil {
-				return fmt.Errorf("unable to create zip entry: %v", err)
+				return fmt.Errorf("unable to create zip entry: %w", err)
 			}
 			if err := object.Write(ctx, o, writer); err != nil {
-				return fmt.Errorf("unable to write object: %v", err)
+				return fmt.Errorf("unable to write object: %w", err)
 			}
 			startAfter = e.Name
 			s.AddBytes(o.Size)
@@ -249,7 +249,7 @@ func finishArchive(ctx context.Context, arch *Archive) error {
 	}
 
 	if err := zipWriter.Close(); err != nil {
-		return fmt.Errorf("unable to close zip writer: %v", err)
+		return fmt.Errorf("unable to close zip writer: %w", err)
 	}
 
 	chunkId, err := chunkWriter.Commit(ctx)
@@ -276,7 +276,7 @@ func finishArchive(ctx context.Context, arch *Archive) error {
 	}
 
 	if err := delete(ctx, arch.ID); err != nil {
-		fmt.Errorf("unable to delete archive: %v", err)
+		fmt.Errorf("unable to delete archive: %w", err)
 	}
 
 	slog.Info("finished archive", "archive", arch.ID, "summary", s.Summary())

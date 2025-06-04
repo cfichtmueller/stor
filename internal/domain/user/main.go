@@ -33,7 +33,7 @@ func (u *User) SetPassword(pw string) error {
 	}
 	b, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("unable to hash password: %v", err)
+		return fmt.Errorf("unable to hash password: %w", err)
 	}
 	u.passwordHash = b
 	return nil
@@ -100,7 +100,7 @@ func Create(ctx context.Context, cmd CreateCommand) (*User, error) {
 		u.CreatedAt,
 		u.LastSeenAt,
 	); err != nil {
-		return nil, fmt.Errorf("unable to save user: %v", err)
+		return nil, fmt.Errorf("unable to save user: %w", err)
 	}
 
 	return u, nil
@@ -109,7 +109,7 @@ func Create(ctx context.Context, cmd CreateCommand) (*User, error) {
 func List(ctx context.Context) ([]*User, error) {
 	rows, err := listStmt.QueryContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable to list users: %v", err)
+		return nil, fmt.Errorf("unable to list users: %w", err)
 	}
 	users := make([]*User, 0)
 	for rows.Next() {
@@ -122,7 +122,7 @@ func List(ctx context.Context) ([]*User, error) {
 			&u.CreatedAt,
 			&u.LastSeenAt,
 		); err != nil {
-			return nil, fmt.Errorf("unable to decode user: %v", err)
+			return nil, fmt.Errorf("unable to decode user: %w", err)
 		}
 		users = append(users, &u)
 	}
@@ -149,7 +149,7 @@ func Update(ctx context.Context, u *User) error {
 		u.LastSeenAt,
 		u.ID,
 	); err != nil {
-		return fmt.Errorf("unable to update user: %v", err)
+		return fmt.Errorf("unable to update user: %w", err)
 	}
 	return nil
 }
@@ -191,7 +191,7 @@ func decodeOne(row *sql.Row) (*User, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("unable to decode user: %v", err)
+		return nil, fmt.Errorf("unable to decode user: %w", err)
 	}
 	return &u, nil
 }

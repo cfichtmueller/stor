@@ -127,7 +127,7 @@ func List(ctx context.Context, bucketName, startAfter string, limit int) ([]*Obj
 func Count(ctx context.Context, bucketName, startAfter string) (int, error) {
 	var count int
 	if err := countStmt.QueryRowContext(ctx, bucketName, startAfter, false).Scan(&count); err != nil {
-		return 0, fmt.Errorf("unable to count objects: %v", err)
+		return 0, fmt.Errorf("unable to count objects: %w", err)
 	}
 	return count, nil
 }
@@ -141,7 +141,7 @@ func StatsForBucket(ctx context.Context, bucketName string) (*Stats, error) {
 	var objects int64
 	var size float64
 	if err := statsStmt.QueryRowContext(ctx, bucketName, false).Scan(&objects, &size); err != nil {
-		return nil, fmt.Errorf("unable to query object stats: %v", err)
+		return nil, fmt.Errorf("unable to query object stats: %w", err)
 	}
 
 	return &Stats{
@@ -152,7 +152,7 @@ func StatsForBucket(ctx context.Context, bucketName string) (*Stats, error) {
 
 func decodeRows(rows *sql.Rows, err error) ([]*Object, error) {
 	if err != nil {
-		return nil, fmt.Errorf("unable to find object records: %v", err)
+		return nil, fmt.Errorf("unable to find object records: %w", err)
 	}
 	objects := make([]*Object, 0)
 	for rows.Next() {
@@ -168,7 +168,7 @@ func decodeRows(rows *sql.Rows, err error) ([]*Object, error) {
 			&o.Deleted,
 			&o.CurrentVersion,
 		); err != nil {
-			return nil, fmt.Errorf("unable to decode object record: %v", err)
+			return nil, fmt.Errorf("unable to decode object record: %w", err)
 		}
 		objects = append(objects, &o)
 	}
@@ -192,7 +192,7 @@ func FindOne(ctx context.Context, bucketName, key string, deleted bool) (*Object
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ec.NoSuchKey
 		}
-		return nil, fmt.Errorf("unable to find object record: %v", err)
+		return nil, fmt.Errorf("unable to find object record: %w", err)
 	}
 	return &o, nil
 }
@@ -226,7 +226,7 @@ func FindMany(ctx context.Context, bucketName string, keys []string, deleted boo
 func Exists(ctx context.Context, bucketName, key string) (bool, error) {
 	var count int
 	if err := existsStmt.QueryRowContext(ctx, bucketName, key, false).Scan(&count); err != nil {
-		return false, fmt.Errorf("unable to count objects: %v", err)
+		return false, fmt.Errorf("unable to count objects: %w", err)
 	}
 	return count > 0, nil
 }
@@ -295,16 +295,16 @@ func Copy(ctx context.Context, src *Object, destKey string) (*Object, error) {
 
 func create(ctx context.Context, o *Object, chunkIds []string) error {
 	if _, err := createObjectVersionStmt.ExecContext(ctx, o.CurrentVersion, o.ID, o.ContentType, o.Size, o.CreatedAt, o.ETag); err != nil {
-		return fmt.Errorf("unable to create object version: %v", err)
+		return fmt.Errorf("unable to create object version: %w", err)
 	}
 
 	for seq, chunkId := range chunkIds {
 		if _, err := addObjectChunkStmt.ExecContext(ctx, o.CurrentVersion, chunkId, seq+1); err != nil {
-			return fmt.Errorf("unable to persist object chunk record: %v", err)
+			return fmt.Errorf("unable to persist object chunk record: %w", err)
 		}
 	}
 	if _, err := createStmt.ExecContext(ctx, o.ID, o.Bucket, o.Key, o.ETag, o.ContentType, o.Size, o.CreatedAt, o.CurrentVersion); err != nil {
-		return fmt.Errorf("unable to persist object record: %v", err)
+		return fmt.Errorf("unable to persist object record: %w", err)
 	}
 	return nil
 }
@@ -328,13 +328,13 @@ func Update(ctx context.Context, o *Object, cmd UpdateCommand) (*Object, error) 
 	now := domain.TimeNow()
 	etag := domain.NewEtag()
 	if _, err := createObjectVersionStmt.ExecContext(ctx, versionId, o.ID, cmd.ContentType, size, now, etag); err != nil {
-		return nil, fmt.Errorf("unable to create object version: %v", err)
+		return nil, fmt.Errorf("unable to create object version: %w", err)
 	}
 	if _, err := addObjectChunkStmt.ExecContext(ctx, versionId, chunkId, 1); err != nil {
-		return nil, fmt.Errorf("unable to persist object chunk record: %v", err)
+		return nil, fmt.Errorf("unable to persist object chunk record: %w", err)
 	}
 	if _, err := updateObjectMetadataStmt.ExecContext(ctx, cmd.ContentType, size, etag, versionId, o.ID); err != nil {
-		return nil, fmt.Errorf("unable to update object: %v", err)
+		return nil, fmt.Errorf("unable to update object: %w", err)
 	}
 	if _, err := markObjectVersionDeletedStmt.ExecContext(ctx, o.CurrentVersion); err != nil {
 		return nil, fmt.Errorf("unable to set previous object version as deleted")
@@ -369,15 +369,15 @@ func UpdateFromCopy(ctx context.Context, src, dest *Object) (*Object, error) {
 	}
 
 	if _, err := createObjectVersionStmt.ExecContext(ctx, versionId, dest.ID, contentType, size, now, etag); err != nil {
-		return nil, fmt.Errorf("unable to create object version: %v", err)
+		return nil, fmt.Errorf("unable to create object version: %w", err)
 	}
 	for seq, chunkId := range chunkIds {
 		if _, err := addObjectChunkStmt.ExecContext(ctx, versionId, chunkId, seq+1); err != nil {
-			return nil, fmt.Errorf("unable to persist object chunk record: %v", err)
+			return nil, fmt.Errorf("unable to persist object chunk record: %w", err)
 		}
 	}
 	if _, err := updateObjectMetadataStmt.ExecContext(ctx, contentType, size, etag, versionId, dest.ID); err != nil {
-		return nil, fmt.Errorf("unable to update object: %v", err)
+		return nil, fmt.Errorf("unable to update object: %w", err)
 	}
 	if _, err := markObjectVersionDeletedStmt.ExecContext(ctx, dest.CurrentVersion); err != nil {
 		return nil, fmt.Errorf("unable to set previous object version as deleted")
@@ -413,7 +413,7 @@ func Write(ctx context.Context, o *Object, w io.Writer) error {
 func Delete(ctx context.Context, o *Object) error {
 	o.Deleted = true
 	if _, err := markObjectDeletedStmt.ExecContext(ctx, o.ID); err != nil {
-		return fmt.Errorf("unable to update object record: %v", err)
+		return fmt.Errorf("unable to update object record: %w", err)
 	}
 	triggerPurge()
 	return nil
@@ -423,13 +423,13 @@ func findObjectChunks(ctx context.Context, objectId string) ([]string, error) {
 	//TODO: when the number of chunks becomes large, this needs to "cursor" its way through
 	rows, err := findObjectChunksStmt.QueryContext(ctx, objectId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to find chunks: %v", err)
+		return nil, fmt.Errorf("unable to find chunks: %w", err)
 	}
 	ids := make([]string, 0)
 	for rows.Next() {
 		var chunkId string
 		if err := rows.Scan(&chunkId); err != nil {
-			return nil, fmt.Errorf("unable to decode chunk: %v", err)
+			return nil, fmt.Errorf("unable to decode chunk: %w", err)
 		}
 		ids = append(ids, chunkId)
 	}
@@ -514,13 +514,13 @@ func purgeContext(ctx context.Context) {
 func getDeletedObjectIds(ctx context.Context) ([]string, error) {
 	rows, err := findDeletedObjectsStmt.QueryContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable to find deleted objects: %v", err)
+		return nil, fmt.Errorf("unable to find deleted objects: %w", err)
 	}
 	ids := make([]string, 0)
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("unable to scan object row: %v", err)
+			return nil, fmt.Errorf("unable to scan object row: %w", err)
 		}
 		ids = append(ids, id)
 	}
@@ -529,10 +529,10 @@ func getDeletedObjectIds(ctx context.Context) ([]string, error) {
 
 func purgeObject(ctx context.Context, objectId string) error {
 	if _, err := markObjectVersionsDeletedStmt.ExecContext(ctx, objectId); err != nil {
-		return fmt.Errorf("unable to mark object versions as deleted: %v", err)
+		return fmt.Errorf("unable to mark object versions as deleted: %w", err)
 	}
 	if _, err := deleteObjectStmt.ExecContext(ctx, objectId); err != nil {
-		return fmt.Errorf("unable to delete object: %v", err)
+		return fmt.Errorf("unable to delete object: %w", err)
 	}
 	return nil
 }
@@ -540,13 +540,13 @@ func purgeObject(ctx context.Context, objectId string) error {
 func getDeletedObjectVersionIds(ctx context.Context) ([]string, error) {
 	rows, err := findDeletedObjectVersionsStmt.QueryContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable to find deleted object versions: %v", err)
+		return nil, fmt.Errorf("unable to find deleted object versions: %w", err)
 	}
 	ids := make([]string, 0)
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("unable to scan object version row: %v", err)
+			return nil, fmt.Errorf("unable to scan object version row: %w", err)
 		}
 		ids = append(ids, id)
 	}
@@ -564,11 +564,11 @@ func purgeObjectVersion(ctx context.Context, versionId string) error {
 		}
 	}
 	if _, err := deleteObjectChunksStmt.ExecContext(ctx, versionId); err != nil {
-		return fmt.Errorf("unable to delete chunk links: %v", err)
+		return fmt.Errorf("unable to delete chunk links: %w", err)
 	}
 
 	if _, err := deleteObjectVersionStmt.ExecContext(ctx, versionId); err != nil {
-		return fmt.Errorf("unable to delete object version: %v", err)
+		return fmt.Errorf("unable to delete object version: %w", err)
 	}
 	return nil
 }

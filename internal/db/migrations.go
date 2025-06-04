@@ -168,7 +168,7 @@ func runMigrations() {
 					&e.createdAt,
 					&e.etag,
 				); err != nil {
-					return fmt.Errorf("unable to decode object row: %v", err)
+					return fmt.Errorf("unable to decode object row: %w", err)
 				}
 				mos = append(mos, &e)
 			}
@@ -188,13 +188,13 @@ func runMigrations() {
 					e.createdAt,
 					e.etag,
 				); err != nil {
-					return fmt.Errorf("unable to create object version for object %s: %v", e.id, err)
+					return fmt.Errorf("unable to create object version for object %s: %w", e.id, err)
 				}
 				if _, err := db.Exec("UPDATE objects SET current = ? WHERE id = ?", versionId, e.id); err != nil {
-					return fmt.Errorf("unable to set object version pointer for object %s: %v", e.id, err)
+					return fmt.Errorf("unable to set object version pointer for object %s: %w", e.id, err)
 				}
 				if _, err := db.Exec("UPDATE object_chunks SET object = ? WHERE object = ?", versionId, e.id); err != nil {
-					return fmt.Errorf("unable to update object chunks object pointers for object %s: %v", e.id, err)
+					return fmt.Errorf("unable to update object chunks object pointers for object %s: %w", e.id, err)
 				}
 			}
 		}
@@ -232,7 +232,7 @@ func runMigrations() {
 			return err
 		}
 		if _, err := db.Exec("UPDATE api_keys SET created_by = ?", "user:"+id); err != nil {
-			return fmt.Errorf("unable to update api keys: %v", err)
+			return fmt.Errorf("unable to update api keys: %w", err)
 		}
 		return nil
 	})

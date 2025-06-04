@@ -170,7 +170,7 @@ func GetStats(ctx context.Context) (Stats, error) {
 	var count uint64
 	var totalSize float64
 	if err := statsStmt.QueryRowContext(ctx).Scan(&count, &totalSize); err != nil {
-		return Stats{}, fmt.Errorf("unable to query chunk stats: %v", err)
+		return Stats{}, fmt.Errorf("unable to query chunk stats: %w", err)
 	}
 	return Stats{
 		Count:     uint64(count),
@@ -223,26 +223,26 @@ func Delete(ctx context.Context, id string) error {
 	}
 
 	if _, err := deleteStmt.ExecContext(ctx, c.ID); err != nil {
-		return fmt.Errorf("unable to delete chunk %s: %v", c.ID, err)
+		return fmt.Errorf("unable to delete chunk %s: %w", c.ID, err)
 	}
 	folder := id[:2]
 	filename := id[2:]
 	if err := os.Remove(path.Join(config.DataDir, "chunks", folder, filename)); err != nil {
-		return fmt.Errorf("unable to delete chunk file: %v", err)
+		return fmt.Errorf("unable to delete chunk file: %w", err)
 	}
 	return nil
 }
 
 func IncreaseReferenceCount(ctx context.Context, chunkId string) error {
 	if _, err := increaseReferenceCountStmt.ExecContext(ctx, chunkId); err != nil {
-		return fmt.Errorf("unable to increase reference count for chunk %s: %v", chunkId, err)
+		return fmt.Errorf("unable to increase reference count for chunk %s: %w", chunkId, err)
 	}
 	return nil
 }
 
 func DecreaseReferenceCount(ctx context.Context, chunkId string) error {
 	if _, err := decreaseReferenceCountStmt.ExecContext(ctx, chunkId); err != nil {
-		return fmt.Errorf("unable to decrease reference count for chunk %s: %v", chunkId, err)
+		return fmt.Errorf("unable to decrease reference count for chunk %s: %w", chunkId, err)
 	}
 	return nil
 }
@@ -280,7 +280,7 @@ func prepareChunkFile(id string) (string, error) {
 
 func createChunkTableRow(ctx context.Context, id string, size int64) error {
 	if _, err := createStmt.ExecContext(ctx, id, size, 1); err != nil {
-		return fmt.Errorf("unable to persist chunk: %v", err)
+		return fmt.Errorf("unable to persist chunk: %w", err)
 	}
 	return nil
 }
@@ -302,7 +302,7 @@ func find(ctx context.Context, id string) (*Chunk, error) {
 
 func update(ctx context.Context, c *Chunk) error {
 	if _, err := updateStmt.ExecContext(ctx, c.References, c.ID); err != nil {
-		return fmt.Errorf("unable to update chunk record: %v", err)
+		return fmt.Errorf("unable to update chunk record: %w", err)
 	}
 	return nil
 }
@@ -310,7 +310,7 @@ func update(ctx context.Context, c *Chunk) error {
 func computeHash(data []byte) (string, error) {
 	hash := sha256.New()
 	if _, err := hash.Write(data); err != nil {
-		return "", fmt.Errorf("unable to compute hash: %v", err)
+		return "", fmt.Errorf("unable to compute hash: %w", err)
 	}
 	hashBytes := hash.Sum(nil)
 	return hex.EncodeToString(hashBytes), nil
