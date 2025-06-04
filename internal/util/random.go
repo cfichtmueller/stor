@@ -19,7 +19,7 @@ func RandomStringFromAlphabet(alphabet string, length int) string {
 	}
 	chars := strings.Split(alphabet, "")
 	cap := len(alphabet) - 1
-	for i := 0; i < length; i++ {
+	for i := range length {
 		index := int(bytes[i]) % cap
 		result.WriteString(chars[index])
 	}
