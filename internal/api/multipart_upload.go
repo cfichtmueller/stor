@@ -5,7 +5,7 @@
 package api
 
 import (
-	"log"
+	"log/slog"
 
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain"
@@ -23,7 +23,7 @@ func handleCreateMultipartUpload(c jug.Context) {
 	key := contextGetObjectKey(c)
 	contentType := c.Request().Header.Get("Content-Type")
 
-	log.Printf("Create multipart upload in `%s/%s`-> %s", b.Name, key, contentType)
+	slog.Info("create multipart upload", "bucket", b.Name, "key", key, "content-type", contentType)
 
 	c.RespondOk(CreateMultipartUploadResult{
 		Bucket:   b.Name,
@@ -43,7 +43,7 @@ func handleUploadPart(c jug.Context) {
 		return
 	}
 
-	log.Printf("upload part %d for %s", partNumber, uploadId)
+	slog.Info("upload part", "upload", uploadId, "part", partNumber)
 
 	c.Status(200)
 	c.SetHeader("ETag", domain.RandomId())
@@ -77,7 +77,7 @@ func handleCompleteMultipartUpload(c jug.Context) {
 		return
 	}
 
-	log.Printf("complete multipart upload in `%s/%s` -> %s", b.Name, key, uploadId)
+	slog.Info("complete multipart upload", "bucket", b.Name, "key", key, "upload", uploadId)
 
 	c.RespondOk(CompleteMultipartUploadResult{
 		Bucket: b.Name,
@@ -95,7 +95,7 @@ func handleAbortMultipartUpload(c jug.Context) {
 		return
 	}
 
-	log.Printf("abort multipart upload in `%s/%s` -> %s", b.Name, key, uploadId)
+	slog.Info("abort multipart upload", "bucket", b.Name, "key", key, "upload", uploadId)
 
 	c.RespondNoContent()
 }

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
@@ -461,48 +462,48 @@ func purgeContext(ctx context.Context) {
 	}
 	objectIds, err := getDeletedObjectIds(ctx)
 	if err != nil {
-		log.Printf("%v", err)
+		slog.Error("unable to get deleted objects", "error", err)
 		return
 	}
 	for i, id := range objectIds {
 		select {
 		case <-ctx.Done():
 			if i > 0 {
-				log.Printf("purged %d objects", i)
+				slog.Error("purged objects", "objects", i)
 			}
 			return
 		default:
 			if err := purgeObject(ctx, id); err != nil {
-				log.Printf("unable to purge object: %v", err)
+				slog.Error("unable to purge object", "object", id, "error", err)
 				return
 			}
 		}
 	}
 	if len(objectIds) > 0 {
-		log.Printf("purged %d objects", len(objectIds))
+		slog.Info("purged objects", "objects", len(objectIds))
 	}
 
 	versionIds, err := getDeletedObjectVersionIds(ctx)
 	if err != nil {
-		log.Printf("%v", err)
+		slog.Error("unable to get deleted object version ids", "error", err)
 		return
 	}
 	for i, id := range versionIds {
 		select {
 		case <-ctx.Done():
 			if i > 0 {
-				log.Printf("purged %d object versions", i)
+				slog.Info("purged object versions", "versions", i)
 			}
 		default:
 			if err := purgeObjectVersion(ctx, id); err != nil {
-				log.Printf("unable to purge object version: %v", err)
+				slog.Error("unable to purge object versions", "error", err)
 				return
 			}
 		}
 	}
 
 	if len(versionIds) > 0 {
-		log.Printf("purged %d object versions", len(versionIds))
+		slog.Info("purged object versions", "versions", len(versionIds))
 	}
 
 	purgeMutex.Lock()

@@ -5,7 +5,7 @@
 package api
 
 import (
-	"log"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -61,7 +61,7 @@ func handleGetObject(c jug.Context) {
 	c.SetHeader("Content-Type", o.ContentType)
 
 	if err := object.Write(c, o, c.Writer()); err != nil {
-		log.Printf("unable to write object: %v", err)
+		slog.Error("unable to write object", "error", err)
 	}
 }
 

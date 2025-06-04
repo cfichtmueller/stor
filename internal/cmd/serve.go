@@ -5,8 +5,8 @@
 package cmd
 
 import (
-	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -45,8 +45,8 @@ var serveCmd = &cobra.Command{
 			return consoleServer.ListenAndServe()
 		})
 
-		fmt.Printf("Starting API on %s\n", apiAddr)
-		fmt.Printf("Starting Console on %s\n", consoleAddr)
+		slog.Info("starting API", "address", apiAddr)
+		slog.Info("starting console", "address", consoleAddr)
 
 		if err := g.Wait(); err != nil {
 			log.Fatal(err)

@@ -6,7 +6,7 @@ package ui
 
 import (
 	"embed"
-	"log"
+	"log/slog"
 
 	"github.com/cfichtmueller/jug"
 )
@@ -35,7 +35,7 @@ func RenderImg(ctx jug.Context, name string) {
 func renderFile(ctx jug.Context, fs embed.FS, name, contentType string) {
 	b, err := fs.ReadFile(name)
 	if err != nil {
-		log.Printf("unable to write file %s: %v", name, err)
+		slog.Error("unable to write file", "name", name, "error", err)
 		ctx.RespondInternalServerError(nil)
 		return
 	}

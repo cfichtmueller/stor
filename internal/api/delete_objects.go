@@ -6,7 +6,7 @@ package api
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/object"
@@ -76,7 +76,7 @@ func handleDeleteObjects(c jug.Context) {
 	}
 
 	if err := uc.ReconcileBucket(c, b); err != nil {
-		log.Printf("unable to reconcile bucket: %v", err)
+		slog.Error("unable to reconcile bucket", "error", err)
 	}
 
 	c.RespondOk(DeleteResults{

@@ -9,7 +9,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/cfichtmueller/stor/internal/db"
@@ -94,6 +94,6 @@ func worker() {
 
 func purgeNonces() {
 	if _, err := deleteExpiredStmt.Exec(domain.TimeNow()); err != nil {
-		log.Printf("unable to purge expired nonces: %v", err)
+		slog.Error("unable to purge expired nonces", "error", err)
 	}
 }

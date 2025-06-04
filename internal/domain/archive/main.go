@@ -10,7 +10,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -185,12 +185,12 @@ func finishArchives() {
 			finishFlag = false
 			return
 		}
-		log.Printf("unable to query pending archives: %v", err)
+		slog.Error("unable to query pending archives", "error", err)
 		return
 	}
 
 	if err := finishArchive(ctx, a); err != nil {
-		log.Printf("unable to finish archive: %v", err)
+		slog.Error("unable to finish archive", "archive", a.ID, "error", err)
 		failArchive(ctx, a.ID)
 		return
 	}
@@ -279,7 +279,7 @@ func finishArchive(ctx context.Context, arch *Archive) error {
 		fmt.Errorf("unable to delete archive: %v", err)
 	}
 
-	log.Printf("Finished archive: %s", s.Summary())
+	slog.Info("finished archive", "archive", arch.ID, "summary", s.Summary())
 
 	bus.Publish(EventCompleted, CompletedEvent{
 		Bucket:    arch.Bucket,
@@ -292,7 +292,7 @@ func finishArchive(ctx context.Context, arch *Archive) error {
 
 func failArchive(ctx context.Context, id string) {
 	if _, err := updateStmt.ExecContext(ctx, StateFailed, false, id); err != nil {
-		log.Printf("unable to fail archive %s: %v", id, err)
+		slog.Error("unable to fail archive", "archive", id, "error", err)
 	}
 }
 

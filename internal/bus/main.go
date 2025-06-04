@@ -6,7 +6,7 @@ package bus
 
 import (
 	"context"
-	"log"
+	"log/slog"
 )
 
 type Handler func(event any)
@@ -43,13 +43,13 @@ func SubscribeCE(topic string, handler HandlerCE) {
 
 func Publish(topic string, event any) {
 	if err := PublishE(topic, event); err != nil {
-		log.Print("failed to publish event", topic, ":", err)
+		slog.Error("unable to publish event", "topic", topic, "error", err)
 	}
 }
 
 func PublishC(c context.Context, topic string, event any) {
 	if err := PublishCE(c, topic, event); err != nil {
-		log.Print("failed to publish event ", topic, ": ", err)
+		slog.Error("unable to publish event", "topic", topic, "error", err)
 	}
 }
 
