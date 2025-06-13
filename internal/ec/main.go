@@ -17,6 +17,7 @@ var (
 	NoSuchBucket        = &Error{StatusCode: 404, Code: "NoSuchBucket", Message: "The specified bucket does not exist"}
 	NoSuchKey           = &Error{StatusCode: 404, Code: "NoSuchKey", Message: "The specified key does not exist"}
 	NoSuchUser          = &Error{StatusCode: 404, Code: "NoSuchUser", Message: "The specified user does not exist"}
+	ObjectAlreadyExists = &Error{StatusCode: 409, Code: "ObjectAlreadyExists", Message: "The requested object name is not available"}
 	Unauthorized        = &Error{StatusCode: 401, Code: "Unauthorized", Message: "Unauthorized"}
 	UserAlreadyExists   = &Error{StatusCode: 409, Code: "UserAlreadyExists", Message: "The requested user name is not available"}
 )

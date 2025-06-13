@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
 	"github.com/cfichtmueller/stor/internal/domain/archive"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
@@ -24,99 +24,96 @@ var (
 	tokenTTL   = time.Minute
 )
 
-func bucketFilter(c jug.Context) {
-	name := c.Param(paramBucketName)
+func bucketFilter(c *srv.Context, next srv.Handler) *srv.Response {
+	name := c.PathValue(paramBucketName)
 	if len(name) < 3 {
-		handleError(c, ec.NoSuchBucket)
-		c.Abort()
-		return
+		return responseFromError(ec.NoSuchBucket)
 	}
 	b, err := bucket.FindOne(c, name)
 	if err != nil {
-		handleError(c, err)
-		c.Abort()
-		return
+		return responseFromError(err)
 	}
 	c.Set("bucket", b)
+	return next(c)
 }
 
-func mustGetBucket(c jug.Context) (*bucket.Bucket, bool) {
-	name := c.Param(paramBucketName)
+func mustGetBucket(c *srv.Context) (*bucket.Bucket, *srv.Response) {
+	name := c.PathValue(paramBucketName)
 	if len(name) < 3 {
-		handleError(c, ec.NoSuchBucket)
-		return nil, false
+		return nil, responseFromError(ec.NoSuchBucket)
 	}
 	b, err := bucket.FindOne(c, name)
 	if err != nil {
-		handleError(c, err)
-		return nil, false
+		return nil, responseFromError(err)
 	}
-	return b, true
+	return b, nil
 }
 
-func objectFilter(c jug.Context) (*object.Object, bool) {
+func objectFilter(c *srv.Context) (*object.Object, *srv.Response) {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
 
 	o, err := object.FindOne(c, b.Name, key, false)
 	if err != nil {
-		handleError(c, err)
-		return nil, false
+		return nil, responseFromError(err)
 	}
 
-	return o, true
+	return o, nil
 }
 
-func mustGetObject(c jug.Context, b *bucket.Bucket) (*object.Object, bool) {
+func mustGetObject(c *srv.Context, b *bucket.Bucket) (*object.Object, *srv.Response) {
 	key := contextGetObjectKey(c)
 
 	o, err := object.FindOne(c, b.Name, key, false)
 	if err != nil {
-		handleError(c, err)
-		return nil, false
+		return nil, responseFromError(err)
 	}
 
-	return o, true
+	return o, nil
 }
 
-func authenticatedFilter(c jug.Context) {
-	principal, ok := authenticateApiKey(c)
+func authenticatedFilter(c *srv.Context, next srv.Handler) *srv.Response {
+	principal, ok, err := authenticateApiKey(c)
+	if err != nil {
+		return responseFromError(err)
+	}
 	if !ok {
-		handleError(c, ec.Unauthorized)
-		c.Abort()
-		return
+		return responseFromError(ec.Unauthorized)
 	}
 	c.Set("principal", principal)
+	return next(c)
 }
 
-func authenticateApiKey(c jug.Context) (string, bool) {
-	auth := c.GetHeader("Authorization")
+func authenticateApiKey(c *srv.Context) (string, bool, error) {
+	auth := c.Header("Authorization")
 	if !strings.HasPrefix(auth, "Bearer ") {
-		return "", false
+		return "", false, nil
 	}
 	token := auth[7:]
 	if p, ok := tokenCache.Get(token); ok {
-		return p.(string), true
+		return p.(string), true, nil
 	}
 	key, err := apikey.Authenticate(c, token)
 	if err != nil {
-		handleError(c, err)
-		return "", false
+		return "", false, err
 	}
 	principal := "apikey:" + key.ID
 	tokenCache.SetTTL(token, principal, tokenTTL)
-	return principal, true
+	return principal, true, nil
 }
 
-func mustAuthenticateApiKey(c jug.Context) bool {
-	if _, ok := authenticateApiKey(c); !ok {
-		handleError(c, ec.Unauthorized)
-		return false
+func mustAuthenticateApiKey(c *srv.Context) *srv.Response {
+	_, ok, err := authenticateApiKey(c)
+	if err != nil {
+		return responseFromError(err)
 	}
-	return true
+	if !ok {
+		return responseFromError(ec.Unauthorized)
+	}
+	return nil
 }
 
-func authenticateNonce(c jug.Context) (bool, error) {
+func authenticateNonce(c *srv.Context) (bool, error) {
 	id := c.Query("nonce")
 	if id == "" {
 		return false, nil
@@ -128,37 +125,33 @@ func authenticateNonce(c jug.Context) (bool, error) {
 		}
 		return false, err
 	}
-	if n.Bucket != c.Param(paramBucketName) || n.Key != contextGetObjectKey(c) {
+	if n.Bucket != c.PathValue(paramBucketName) || n.Key != contextGetObjectKey(c) {
 		return false, ec.Unauthorized
 	}
 	return true, nil
 }
 
-func mustAuthenticateNonce(c jug.Context) bool {
+func mustAuthenticateNonce(c *srv.Context) *srv.Response {
 	ok, err := authenticateNonce(c)
 	if err != nil {
-		handleError(c, err)
-		return false
+		return responseFromError(err)
 	}
 	if !ok {
-		handleError(c, ec.Unauthorized)
-		return false
+		return responseFromError(ec.Unauthorized)
 	}
-	return true
+	return nil
 }
 
-func archiveFilter(c jug.Context) (*archive.Archive, bool) {
+func archiveFilter(c *srv.Context) (*archive.Archive, *srv.Response) {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
 	archiveId := c.Query(queryArchiveId)
 	if archiveId == "" {
-		handleError(c, ec.InvalidArgument)
-		return nil, false
+		return nil, responseFromError(ec.InvalidArgument)
 	}
 	arch, err := archive.FindOne(c, b.Name, key, archiveId)
 	if err != nil {
-		handleError(c, err)
-		return nil, false
+		return nil, responseFromError(err)
 	}
-	return arch, true
+	return arch, nil
 }

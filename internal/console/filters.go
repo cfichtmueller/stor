@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/session"
@@ -20,58 +20,50 @@ var (
 	ErrLoginRequired = fmt.Errorf("login required")
 )
 
-func bucketFilter(c jug.Context) {
-	name := c.Param("bucketName")
+func bucketFilter(c *srv.Context, next srv.Handler) *srv.Response {
+	name := c.PathValue("bucketName")
 	if len(name) < 3 {
-		must("render not found page", c, ui.NotFoundPage().Render(c.Writer()))
-		c.Abort()
-		return
+		return nodeResponse(ui.NotFoundPage())
 	}
 	b, err := bucket.FindOne(c, name)
-	if !must("find bucket", c, err) {
-		c.Abort()
-		return
+	if err != nil {
+		return responseFromError(err)
 	}
 	c.Set("bucket", b)
+	return next(c)
 }
 
-func apiKeyFilter(c jug.Context) {
+func apiKeyFilter(c *srv.Context, next srv.Handler) *srv.Response {
 	keyId := c.Query("key")
 	if keyId == "" {
-		c.Next()
-		return
+		return next(c)
 	}
 	key, err := apikey.Get(c, keyId)
 	if err != nil {
-		c.HandleError(err)
-		c.Abort()
-		return
+		return responseFromError(err)
 	}
 	c.Set("apiKey", key)
+	return next(c)
 }
 
-func authenticatedFilter(c jug.Context) {
-	authCookie, authCookieExists := c.Cookie("stor_auth")
-	if !authCookieExists {
-		hxRedirect(c, "/login")
-		c.Abort()
-		return
+func authenticatedFilter(c *srv.Context, next srv.Handler) *srv.Response {
+	authCookie, err := c.Cookie("stor_auth")
+	if err != nil {
+		return hxRedirect(c, "/login")
 	}
 	userId, err := authenticateSession(c, authCookie)
 	if err != nil {
 		if errors.Is(err, ErrLoginRequired) {
-			hxRedirect(c, "/login")
-		} else {
-			c.HandleError(err)
+			return hxRedirect(c, "/login")
 		}
-		c.Abort()
-		return
+		return responseFromError(err)
 	}
 	contextSetPrincipal(c, user.Urn(userId))
+	return next(c)
 }
 
 // authenticates a session and returns the user's id if successful
-func authenticateSession(c jug.Context, sessionId string) (string, error) {
+func authenticateSession(c *srv.Context, sessionId string) (string, error) {
 	s, err := session.Get(c, sessionId)
 	if err != nil {
 		if errors.Is(err, session.ErrNotFound) {

@@ -7,8 +7,7 @@ package console
 import (
 	"errors"
 
-	"github.com/cfichtmueller/goparts/e"
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/config"
 	"github.com/cfichtmueller/stor/internal/disk"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
@@ -21,50 +20,49 @@ import (
 	"github.com/cfichtmueller/stor/internal/ui"
 )
 
-func handleDashboardPage(c jug.Context) (e.Node, error) {
+func handleDashboardPage(c *srv.Context) *srv.Response {
 	info, err := disk.GetInfo(config.DataDir)
 	if err != nil {
-		return nil, err
+		return responseFromError(err)
 	}
 	bucketStats, err := bucket.GetStats(c)
 	if err != nil {
-		return nil, err
+		return responseFromError(err)
 	}
 	chunkStats, err := chunk.GetStats(c)
 	if err != nil {
-		return nil, err
+		return responseFromError(err)
 	}
 
-	return ui.DashboardPage(ui.DashboardData{
+	return nodeResponseWithShell(c, ui.DashboardPage(ui.DashboardData{
 		DiskInfo:    info,
 		StorageSize: chunkStats.TotalSize,
 		BucketStats: bucketStats,
-	}), nil
+	}))
 }
 
-func handleBucketsPage(c jug.Context) (e.Node, error) {
+func handleBucketsPage(c *srv.Context) *srv.Response {
 	b, err := bucket.FindMany(c, &bucket.Filter{})
 	if err != nil {
-		return nil, err
+		return responseFromError(err)
 	}
 
-	return ui.BucketsPage(b), nil
+	return nodeResponseWithShell(c, ui.BucketsPage(b))
 }
 
-func handleBucketPage(c jug.Context) {
+func handleBucketPage(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
-	c.Status(302)
-	c.SetHeader("Location", "/u/buckets/"+b.Name+"/files")
+	return hxRedirect(c, "/u/buckets/"+b.Name+"/objects")
 }
 
-func handleBucketObjectsPage(c jug.Context) (e.Node, error) {
+func handleBucketObjectsPage(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
 	delimiter := "/"
 	prefix := c.Query("prefix")
 	prefixLen := len(prefix)
 	r, err := uc.ObjectPrefixSearch(c, b, delimiter, prefix, "", 1000)
 	if err != nil {
-		return nil, err
+		return responseFromError(err)
 	}
 	bucketLinks := ui.NewBucketLinks(b.Name)
 	objects := make([]ui.ObjectData, 0, len(r.CommonPrefixes)+len(r.Objects)+1)
@@ -87,53 +85,53 @@ func handleBucketObjectsPage(c jug.Context) (e.Node, error) {
 			Href: bucketLinks.Object(o.Key),
 		})
 	}
-	return ui.BucketObjectsPage(ui.BucketObjectsPageData{
+	return nodeResponseWithShell(c, ui.BucketObjectsPage(ui.BucketObjectsPageData{
 		Bucket:  b,
 		Prefix:  prefix,
 		Objects: objects,
-	}), nil
+	}))
 }
 
-func handleBucketPropertiesPage(c jug.Context) (e.Node, error) {
+func handleBucketPropertiesPage(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
-	return ui.BucketPropertiesPage(b), nil
+	return nodeResponseWithShell(c, ui.BucketPropertiesPage(b))
 }
 
-func handleBucketSettingsPage(c jug.Context) (e.Node, error) {
+func handleBucketSettingsPage(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
-	return ui.BucketSettingsPage(b), nil
+	return nodeResponseWithShell(c, ui.BucketSettingsPage(b))
 }
 
-func handleObjectPage(c jug.Context) (e.Node, error) {
+func handleObjectPage(c *srv.Context) *srv.Response {
 	key := c.Query("key")
 	b := contextGetBucket(c)
 	o, err := object.FindOne(c, b.Name, key, false)
 	if err != nil && errors.Is(err, ec.NoSuchKey) {
-		return ui.NotFoundPage(), nil
+		return nodeResponseWithShell(c, ui.NotFoundPage())
 	}
 	if err != nil {
-		return nil, err
+		return responseFromError(err)
 	}
-	return ui.ObjectPropertiesPage(b, o), nil
+	return nodeResponseWithShell(c, ui.ObjectPropertiesPage(b, o))
 }
 
-func handleUsersPage(c jug.Context) (e.Node, error) {
+func handleUsersPage(c *srv.Context) *srv.Response {
 	u, err := user.List(c)
 	if err != nil {
-		return nil, err
+		return responseFromError(err)
 	}
-	return ui.UsersPage(&ui.UsersPageData{
+	return nodeResponseWithShell(c, ui.UsersPage(&ui.UsersPageData{
 		Users: u,
-	}), nil
+	}))
 }
 
-func handleApiKeysPage(c jug.Context) (e.Node, error) {
+func handleApiKeysPage(c *srv.Context) *srv.Response {
 	keys, err := apikey.List(c)
 	if err != nil {
-		return nil, err
+		return responseFromError(err)
 	}
 
-	return ui.ApiKeysPage(&ui.ApiKeysPageData{
+	return nodeResponseWithShell(c, ui.ApiKeysPage(&ui.ApiKeysPageData{
 		Keys: keys,
-	}), nil
+	}))
 }

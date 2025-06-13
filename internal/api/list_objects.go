@@ -5,7 +5,7 @@
 package api
 
 import (
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/uc"
 	"github.com/cfichtmueller/stor/internal/util"
@@ -21,12 +21,11 @@ type ListObjectsResponse struct {
 	CommonPrefixes []string         `json:"commonPrefixes,omitempty"`
 }
 
-func handleListObjects(c jug.Context) {
+func handleListObjects(c *srv.Context) *srv.Response {
 	startAfter := c.Query("start-after")
-	maxKeys, err := c.DefaultIntQuery("max-keys", 1000)
-	if err != nil {
-		handleError(c, err)
-		return
+	maxKeys, r := c.IntQueryOrDefault("max-keys", 1000)
+	if r != nil {
+		return r
 	}
 	if maxKeys > 1000 {
 		maxKeys = 1000
@@ -38,10 +37,10 @@ func handleListObjects(c jug.Context) {
 	if delimiter != "" {
 		r, err := uc.ObjectPrefixSearch(c, b, delimiter, prefix, startAfter, maxKeys)
 		if err != nil {
-			handleError(c, err)
-			return
+			return responseFromError(err)
 		}
-		c.RespondOk(ListObjectsResponse{
+
+		return srv.Respond().Json(ListObjectsResponse{
 			IsTruncated:    r.IsTruncated,
 			Objects:        util.MapMany(r.Objects, newObjectResponse),
 			Name:           b.Name,
@@ -50,26 +49,23 @@ func handleListObjects(c jug.Context) {
 			StartAfter:     &startAfter,
 			CommonPrefixes: r.CommonPrefixes,
 		})
-		return
 	}
 
 	contents, err := object.List(c, b.Name, startAfter, maxKeys)
 	if err != nil {
-		handleError(c, err)
-		return
+		return responseFromError(err)
 	}
 	keyCount := len(contents)
 	totalKeys, err := object.Count(c, b.Name, startAfter)
 	if err != nil {
-		handleError(c, err)
-		return
+		return responseFromError(err)
 	}
 	var startAfterRes *string
 	if startAfter != "" {
 		startAfterRes = &startAfter
 	}
 
-	c.RespondOk(ListObjectsResponse{
+	return srv.Respond().Json(ListObjectsResponse{
 		IsTruncated: totalKeys > keyCount,
 		Objects:     util.MapMany(contents, newObjectResponse),
 		Name:        b.Name,

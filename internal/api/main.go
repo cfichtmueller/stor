@@ -5,45 +5,27 @@
 package api
 
 import (
-	"encoding/json"
-
-	"github.com/cfichtmueller/jug"
-	"github.com/cfichtmueller/stor/internal/ec"
+	"github.com/cfichtmueller/srv"
+	"github.com/cfichtmueller/stor/internal/config"
 )
 
-func Configure() jug.Engine {
+func Configure() *srv.Server {
 
-	engine := jug.Default()
+	server := srv.NewServer().SetTrustRemoteIdHeaders(config.TrustProxies).Use(srv.LoggingMiddleware())
 
-	engine.GET("", authenticatedFilter, handleListBuckets)
-	bucketGroup := engine.Group("/:bucketName", authenticatedFilter)
-	bucketGroup.POST("", bucketFilter, handleBucketPost)
+	server.GET("", handleListBuckets, authenticatedFilter)
+
+	bucketGroup := server.Group("/{bucketName}", authenticatedFilter)
+	bucketGroup.POST("", handleBucketPost, bucketFilter)
 	bucketGroup.PUT("", handleCreateBucket)
-	bucketGroup.GET("", bucketFilter, handleListObjects)
-	bucketGroup.DELETE("", bucketFilter, handleDeleteBucket)
-	objectGroup := engine.Group("/:bucketName/*objectKey")
+	bucketGroup.GET("", handleListObjects, bucketFilter)
+	bucketGroup.DELETE("", handleDeleteBucket, bucketFilter)
+
+	objectGroup := server.Group("/{bucketName}/{objectKey...}")
 	objectGroup.GET("", handleObjectGet)
-	objectGroup.POST("", authenticatedFilter, bucketFilter, handleObjectPost)
-	objectGroup.PUT("", authenticatedFilter, bucketFilter, handleObjectPut)
-	objectGroup.DELETE("", authenticatedFilter, bucketFilter, handleObjectDelete)
+	objectGroup.POST("", handleObjectPost, authenticatedFilter, bucketFilter)
+	objectGroup.PUT("", handleObjectPut, authenticatedFilter, bucketFilter)
+	objectGroup.DELETE("", handleObjectDelete, authenticatedFilter, bucketFilter)
 
-	return engine
-}
-
-func handleError(ctx jug.Context, err error) {
-	e, ok := err.(*ec.Error)
-	if !ok {
-		ctx.HandleError(err)
-		ctx.Abort()
-		return
-	}
-
-	b, err := json.Marshal(e)
-	if err != nil {
-		ctx.HandleError(err)
-		ctx.Abort()
-		return
-	}
-
-	ctx.Data(e.StatusCode, "application/json", b)
+	return server
 }

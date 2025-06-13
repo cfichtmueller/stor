@@ -7,7 +7,7 @@ package api
 import (
 	"time"
 
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/ec"
@@ -44,41 +44,37 @@ type DeleteResult struct {
 	Error   *ec.Error `json:"error,omitempty"`
 }
 
-func handleBucketPost(c jug.Context) {
+func handleBucketPost(c *srv.Context) *srv.Response {
 	q := c.Request().URL.Query()
 	if q.Has("delete") {
-		handleDeleteObjects(c)
-		return
+		return handleDeleteObjects(c)
 	}
-	c.Status(405)
+	return srv.Respond().MethodNotAllowed()
 }
 
-func handleCreateBucket(c jug.Context) {
-	name := c.Param("bucketName")
+func handleCreateBucket(c *srv.Context) *srv.Response {
+	name := c.PathValue("bucketName")
 
 	b, err := uc.CreateBucket(c, name)
 	if err != nil {
-		handleError(c, err)
-		return
+		return responseFromError(err)
 	}
 
-	c.RespondCreated(newBucketResponse(b))
+	return srv.Respond().Created(newBucketResponse(b))
 }
 
-func handleDeleteBucket(c jug.Context) {
+func handleDeleteBucket(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
 
 	count, err := object.Count(c, b.Name, "")
 	if err != nil {
-		handleError(c, err)
-		return
+		return responseFromError(err)
 	}
 	if count > 0 {
-		handleError(c, ec.BucketNotEmpty)
-		return
+		return responseFromError(ec.BucketNotEmpty)
 	}
 
 	bucket.Delete(c, b.Name)
 
-	c.RespondNoContent()
+	return srv.Respond().NoContent()
 }

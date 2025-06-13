@@ -7,9 +7,9 @@ package uc
 import (
 	"context"
 
-	"github.com/cfichtmueller/jug"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/object"
+	"github.com/cfichtmueller/stor/internal/ec"
 )
 
 func CreateObjectFromData(ctx context.Context, b *bucket.Bucket, cmd object.CreateCommand) (*object.Object, error) {
@@ -19,7 +19,7 @@ func CreateObjectFromData(ctx context.Context, b *bucket.Bucket, cmd object.Crea
 	}
 
 	if exists {
-		return nil, jug.NewConflictError("object exists")
+		return nil, ec.ObjectAlreadyExists
 	}
 
 	o, err := object.Create(ctx, b.Name, cmd)

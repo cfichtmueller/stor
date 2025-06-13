@@ -5,20 +5,18 @@
 package console
 
 import (
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/uc"
 )
 
-func handleHomePage(c jug.Context) {
+func handleHomePage(c *srv.Context) *srv.Response {
 	bootstrapped, err := uc.IsBootstrapped(c)
 	if err != nil {
-		c.HandleError(err)
-		return
+		return srv.Respond().Error(err)
 	}
 	if !bootstrapped {
-		redirect(c, "/bootstrap")
-		return
+		return srv.Respond().Found("/bootstrap")
 	}
 	//TODO: redirect to /u when user is authenticated
-	redirect(c, "/login")
+	return srv.Respond().Found("/login")
 }

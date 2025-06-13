@@ -8,7 +8,7 @@ import (
 	"embed"
 	"log/slog"
 
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 )
 
 var (
@@ -20,25 +20,23 @@ var (
 	img embed.FS
 )
 
-func RenderCss(ctx jug.Context, name string) {
-	renderFile(ctx, css, "css/"+name, "text/css")
+func RenderCss(name string) *srv.Response {
+	return renderFile(css, "css/"+name, "text/css")
 }
 
-func RenderJs(ctx jug.Context, name string) {
-	renderFile(ctx, js, "js/"+name, "application/javascript")
+func RenderJs(name string) *srv.Response {
+	return renderFile(js, "js/"+name, "application/javascript")
 }
 
-func RenderImg(ctx jug.Context, name string) {
-	renderFile(ctx, img, "img/"+name, "image/png")
+func RenderImg(name string) *srv.Response {
+	return renderFile(img, "img/"+name, "image/png")
 }
 
-func renderFile(ctx jug.Context, fs embed.FS, name, contentType string) {
+func renderFile(fs embed.FS, name, contentType string) *srv.Response {
 	b, err := fs.ReadFile(name)
 	if err != nil {
 		slog.Error("unable to write file", "name", name, "error", err)
-		ctx.RespondInternalServerError(nil)
-		return
+		return srv.Respond().InternalServerError()
 	}
-	ctx.SetHeader("Content-Type", contentType)
-	ctx.Writer().Write(b)
+	return srv.Respond().Body(contentType, b)
 }

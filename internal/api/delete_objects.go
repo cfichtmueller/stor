@@ -5,10 +5,9 @@
 package api
 
 import (
-	"fmt"
 	"log/slog"
 
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/ec"
 	"github.com/cfichtmueller/stor/internal/uc"
@@ -20,29 +19,28 @@ type DeleteObjectsRequest struct {
 }
 
 func (r DeleteObjectsRequest) Validate() error {
-	tooMany := len(r.Objects) > 1000
-	tooLittle := len(r.Objects) == 0
-	v := jug.NewValidator().Require(!tooMany, "max 1000 objects are allowed").Require(!tooLittle, "at least one object is required")
-	if tooMany || tooLittle {
-		return v.Validate()
+	v := srv.RequireMinLengthSlice("objects", 1, r.Objects, nil)
+	v = srv.RequireMaxLengthSlice("objects", 1000, r.Objects, v)
+	if v != nil {
+		return v
 	}
+
 	for i, o := range r.Objects {
-		v.RequireNotEmpty(o.Key, fmt.Sprintf("object[%d].key is missing", i))
+		v = srv.RequireNotEmptyIndexed("objects[%d].key", i, o.Key, v)
 	}
-	return v.Validate()
+	return srv.Validate(v)
 }
 
-func handleDeleteObjects(c jug.Context) {
+func handleDeleteObjects(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
 	var req DeleteObjectsRequest
-	if !c.MustBindJSON(&req) {
-		return
+	if r := c.BindJSON(&req); r != nil {
+		return r
 	}
 	objectKeys := util.MapMany(req.Objects, func(r ObjectReference) string { return r.Key })
 	objects, err := object.FindMany(c, b.Name, objectKeys, false)
 	if err != nil {
-		handleError(c, ec.Wrap(err))
-		return
+		return responseFromError(ec.Wrap(err))
 	}
 	var deletedCount int64 = 0
 	var deletedSize int64 = 0
@@ -79,7 +77,7 @@ func handleDeleteObjects(c jug.Context) {
 		slog.Error("unable to reconcile bucket", "error", err)
 	}
 
-	c.RespondOk(DeleteResults{
+	return srv.Respond().Json(DeleteResults{
 		Results: res,
 	})
 }

@@ -6,7 +6,7 @@ package console
 
 import (
 	"github.com/cfichtmueller/goparts/e"
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/config"
 	"github.com/cfichtmueller/stor/internal/disk"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
@@ -19,12 +19,12 @@ import (
 // API Key
 //
 
-func handleRenderApiKeySheet(c jug.Context) (e.Node, error) {
+func handleRenderApiKeySheet(c *srv.Context) (e.Node, error) {
 	key := contextGetApiKey(c)
 	return ui.ApiKeySheet(key), nil
 }
 
-func handleRenderApiKeysTable(c jug.Context) (e.Node, error) {
+func handleRenderApiKeysTable(c *srv.Context) (e.Node, error) {
 	keys, err := apikey.List(c)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func handleRenderApiKeysTable(c jug.Context) (e.Node, error) {
 	return ui.ApiKeysTable(keys), nil
 }
 
-func handleRenderDeleteApiKeyDialog(c jug.Context) (e.Node, error) {
+func handleRenderDeleteApiKeyDialog(c *srv.Context) (e.Node, error) {
 	key := contextGetApiKey(c)
 	return ui.DeleteApiKeyDialog(key), nil
 }
@@ -45,7 +45,7 @@ func handleRenderDeleteApiKeyDialog(c jug.Context) (e.Node, error) {
 // Bucket
 //
 
-func handleRenderBucketsTable(c jug.Context) (e.Node, error) {
+func handleRenderBucketsTable(c *srv.Context) (e.Node, error) {
 	b, err := bucket.FindMany(c, &bucket.Filter{})
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func handleRenderBucketsTable(c jug.Context) (e.Node, error) {
 // Dashboard
 //
 
-func handleRenderDashboardMetrics(c jug.Context) (e.Node, error) {
+func handleRenderDashboardMetrics(c *srv.Context) (e.Node, error) {
 	info, err := disk.GetInfo(config.DataDir)
 	if err != nil {
 		return nil, err
@@ -82,8 +82,8 @@ func handleRenderDashboardMetrics(c jug.Context) (e.Node, error) {
 	}), nil
 }
 
-func renderNodeFn(f func() e.Node) func(c jug.Context) {
-	return renderNode(func(c jug.Context) (e.Node, error) {
+func renderNodeFn(f func() e.Node) func(c *srv.Context) *srv.Response {
+	return renderNode(func(c *srv.Context) (e.Node, error) {
 		return f(), nil
 	})
 }

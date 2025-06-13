@@ -7,80 +7,76 @@ package console
 import (
 	"errors"
 
-	"github.com/cfichtmueller/goparts/e"
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/session"
 	"github.com/cfichtmueller/stor/internal/ec"
 	"github.com/cfichtmueller/stor/internal/uc"
 	"github.com/cfichtmueller/stor/internal/ui"
 )
 
-func handleBootstrapPage(c jug.Context) (e.Node, error) {
-	return ui.BootstrapPage(), nil
+func handleBootstrapPage(c *srv.Context) *srv.Response {
+	return nodeResponseWithShell(c, ui.BootstrapPage())
 }
 
-func RequireNotBootstrapped(c jug.Context) {
+func RequireNotBootstrapped(c *srv.Context, next srv.Handler) *srv.Response {
 	bootstrapped, err := uc.IsBootstrapped(c)
 	if err != nil {
-		c.HandleError(err)
-		c.Abort()
-		return
+		return responseFromError(err)
 	}
 	if bootstrapped {
-		redirect(c, "/")
-		c.Abort()
-		return
+		return srv.Respond().MovedPermanently("/")
 	}
+	return next(c)
 }
 
-func handleBootstrap(c jug.Context) (e.Node, error) {
+func handleBootstrap(c *srv.Context) *srv.Response {
 	cmd := uc.BootstrapCommand{}
 	if err := bindFormData(c, "email", &cmd.Email, "password", &cmd.Password, "passwordConfirmation", &cmd.PasswordConfirmation); err != nil {
-		return nil, err
+		return responseFromError(err)
 	}
 	if err := cmd.Validate(); err != nil {
-		return ui.BootstrapForm(&ui.BootstrapFormData{Email: cmd.Email, ErrorMessage: err.Error()}), nil
+		return nodeResponse(ui.BootstrapForm(&ui.BootstrapFormData{Email: cmd.Email, ErrorMessage: err.Error()}))
 	}
 	if err := uc.Bootstrap(c, cmd); err != nil {
-		return ui.BootstrapForm(&ui.BootstrapFormData{Email: cmd.Email, ErrorMessage: err.Error()}), nil
+		return nodeResponse(ui.BootstrapForm(&ui.BootstrapFormData{Email: cmd.Email, ErrorMessage: err.Error()}))
 	}
 
-	hxRedirect(c, "/login")
-	return nil, nil
+	return srv.Respond().HxRedirect("/login")
 }
 
-func handleLoginPage(c jug.Context) (e.Node, error) {
-	return ui.LoginPage(), nil
+func handleLoginPage(c *srv.Context) *srv.Response {
+	return nodeResponseWithShell(c, ui.LoginPage())
 }
 
-func handleLogin(c jug.Context) (e.Node, error) {
+func handleLogin(c *srv.Context) *srv.Response {
 	cmd := uc.LoginCommand{
 		IpAddress: c.ClientIP(),
 	}
 	if err := bindFormData(c, "email", &cmd.Email, "password", &cmd.Password); err != nil {
-		return nil, err
+		return responseFromError(err)
 	}
 	_, sid, err := uc.Login(c, cmd)
 	if err != nil {
 		if errors.Is(err, ec.InvalidCredentials) {
-			return ui.LoginForm(ui.LoginFormData{
+			return nodeResponse(ui.LoginForm(ui.LoginFormData{
 				Email:        cmd.Email,
 				ErrorMessage: "Invalid Credentials",
-			}), nil
-		} else if errors.Is(err, ec.AccountDisabled) {
-			return ui.LoginForm(ui.LoginFormData{
-				ErrorMessage: "Account is disabled",
-			}), nil
-		} else {
-			return nil, err
+			}))
 		}
+		if errors.Is(err, ec.AccountDisabled) {
+			return nodeResponse(ui.LoginForm(ui.LoginFormData{
+				ErrorMessage: "Account is disabled",
+			}))
+		}
+		return responseFromError(err)
 	}
-	c.SetCookie("stor_auth", sid, int(session.TTL.Seconds()), "/", "", true, true)
-	hxRedirect(c, "/u")
-	return nil, nil
+
+	return srv.Respond().
+		Cookie("stor_auth", sid, int(session.TTL.Seconds()), "/", "", false, true).
+		HxRedirect("/u")
 }
 
-func bindFormData(c jug.Context, args ...any) error {
+func bindFormData(c *srv.Context, args ...any) error {
 	req := c.Request()
 	if err := req.ParseForm(); err != nil {
 		return err

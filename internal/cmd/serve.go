@@ -32,9 +32,9 @@ var serveCmd = &cobra.Command{
 		apiAddr := config.ApiHost + ":" + config.ApiPort
 		consoleAddr := config.ConsoleHost + ":" + config.ConsolePort
 
-		engineServer := newServer(apiAddr, apiEngine)
+		engineServer := newServer(apiAddr, apiEngine.Handler())
 
-		consoleServer := newServer(consoleAddr, consoleEngine)
+		consoleServer := newServer(consoleAddr, consoleEngine.Handler())
 		consoleServer.WriteTimeout = 10 * time.Second
 
 		g.Go(func() error {

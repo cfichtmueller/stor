@@ -5,23 +5,23 @@
 package console
 
 import (
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 )
 
-func contextGetBucket(c jug.Context) *bucket.Bucket {
+func contextGetBucket(c *srv.Context) *bucket.Bucket {
 	return c.MustGet("bucket").(*bucket.Bucket)
 }
 
-func contextGetApiKey(c jug.Context) *apikey.ApiKey {
+func contextGetApiKey(c *srv.Context) *apikey.ApiKey {
 	return c.MustGet("apiKey").(*apikey.ApiKey)
 }
 
-func contextSetPrincipal(c jug.Context, principal string) {
+func contextSetPrincipal(c *srv.Context, principal string) {
 	c.Set("principal", principal)
 }
 
-func contextMustGetPrincipal(c jug.Context) string {
+func contextMustGetPrincipal(c *srv.Context) string {
 	return c.MustGet("principal").(string)
 }

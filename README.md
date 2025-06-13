@@ -26,6 +26,7 @@ API_HOST=127.0.0.1     # optional - defaults to empty (bind all)
 API_PORT=8000          # optional
 CONSOLE_HOST=127.0.0.1 # optional - defaults to empty (bind all)
 CONSOLE_PORT=8001      # optional
+TRUST_PROXIES=false    # optional - trust X-Forwarded-For headers, defaults to false
 ```
 
 ## Contribute to STOR

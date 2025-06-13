@@ -6,23 +6,17 @@ package console
 
 import (
 	"github.com/cfichtmueller/goparts/e"
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 )
 
-type NodeHandler func(c jug.Context) (e.Node, error)
+type NodeHandler func(c *srv.Context) (e.Node, error)
 
-func renderNode(h NodeHandler) func(c jug.Context) {
-	return func(c jug.Context) {
+func renderNode(h NodeHandler) func(c *srv.Context) *srv.Response {
+	return func(c *srv.Context) *srv.Response {
 		n, err := h(c)
 		if err != nil {
-			c.HandleError(err)
-			return
+			return responseFromError(err)
 		}
-		if n == nil {
-			return
-		}
-		if err := n.Render(c.Writer()); err != nil {
-			c.HandleError(err)
-		}
+		return nodeResponse(n)
 	}
 }

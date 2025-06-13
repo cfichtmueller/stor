@@ -7,7 +7,7 @@ package api
 import (
 	"log/slog"
 
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain"
 	"github.com/cfichtmueller/stor/internal/ec"
 )
@@ -18,35 +18,33 @@ type CreateMultipartUploadResult struct {
 	UploadId string `json:"uploadId"`
 }
 
-func handleCreateMultipartUpload(c jug.Context) {
+func handleCreateMultipartUpload(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
 	contentType := c.Request().Header.Get("Content-Type")
 
 	slog.Info("create multipart upload", "bucket", b.Name, "key", key, "content-type", contentType)
 
-	c.RespondOk(CreateMultipartUploadResult{
+	return srv.Respond().Json(CreateMultipartUploadResult{
 		Bucket:   b.Name,
 		Key:      key,
 		UploadId: domain.RandomId(),
 	})
 }
 
-func handleUploadPart(c jug.Context) {
+func handleUploadPart(c *srv.Context) *srv.Response {
 	uploadId := c.Query(queryUploadId)
 	if uploadId == "" {
-		handleError(c, ec.InvalidArgument)
+		return responseFromError(ec.InvalidArgument)
 	}
-	partNumber, err := c.IntQuery("part-number")
-	if err != nil {
-		handleError(c, ec.InvalidArgument)
-		return
+	partNumber, r := c.IntQuery("part-number")
+	if r != nil {
+		return r
 	}
 
 	slog.Info("upload part", "upload", uploadId, "part", partNumber)
 
-	c.Status(200)
-	c.SetHeader("ETag", domain.RandomId())
+	return srv.Respond().ETag(domain.NewEtag())
 }
 
 type PartReference struct {
@@ -64,38 +62,36 @@ type CompleteMultipartUploadResult struct {
 	ETag   string `json:"etag"`
 }
 
-func handleCompleteMultipartUpload(c jug.Context) {
+func handleCompleteMultipartUpload(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
 	uploadId := c.Query(queryUploadId)
 	if uploadId == "" {
-		handleError(c, ec.InvalidArgument)
-		return
+		return responseFromError(ec.InvalidArgument)
 	}
 	var req CompleteMultipartUploadRequest
-	if !c.MustBindJSON(&req) {
-		return
+	if r := c.BindJSON(&req); r != nil {
+		return r
 	}
 
 	slog.Info("complete multipart upload", "bucket", b.Name, "key", key, "upload", uploadId)
 
-	c.RespondOk(CompleteMultipartUploadResult{
+	return srv.Respond().Json(CompleteMultipartUploadResult{
 		Bucket: b.Name,
 		Key:    key,
 		ETag:   domain.RandomId(),
 	})
 }
 
-func handleAbortMultipartUpload(c jug.Context) {
+func handleAbortMultipartUpload(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
 	uploadId := c.Query(queryUploadId)
 	if uploadId == "" {
-		handleError(c, ec.InvalidArgument)
-		return
+		return responseFromError(ec.InvalidArgument)
 	}
 
 	slog.Info("abort multipart upload", "bucket", b.Name, "key", key, "upload", uploadId)
 
-	c.RespondNoContent()
+	return srv.Respond().NoContent()
 }

@@ -5,7 +5,7 @@
 package api
 
 import (
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/archive"
 )
 
@@ -15,7 +15,7 @@ type CreateArchiveResult struct {
 	ArchiveId string `json:"archiveId"`
 }
 
-func handleCreateArchive(c jug.Context) {
+func handleCreateArchive(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
 	t := c.Query("type")
@@ -26,11 +26,10 @@ func handleCreateArchive(c jug.Context) {
 		Type:   t,
 	})
 	if err != nil {
-		handleError(c, err)
-		return
+		return responseFromError(err)
 	}
 
-	c.RespondOk(CreateArchiveResult{
+	return srv.Respond().Json(CreateArchiveResult{
 		Bucket:    b.Name,
 		Key:       key,
 		ArchiveId: id,
@@ -43,20 +42,20 @@ type ArchiveResponse struct {
 	Type  string `json:"type"`
 }
 
-func handleGetArchive(c jug.Context) {
-	if !mustAuthenticateApiKey(c) {
-		return
+func handleGetArchive(c *srv.Context) *srv.Response {
+	if r := mustAuthenticateApiKey(c); r != nil {
+		return r
 	}
-	b, ok := mustGetBucket(c)
-	if !ok {
-		return
+	b, r := mustGetBucket(c)
+	if r != nil {
+		return r
 	}
 	contextSetBucket(c, b)
-	arch, ok := archiveFilter(c)
-	if !ok {
-		return
+	arch, r := archiveFilter(c)
+	if r != nil {
+		return r
 	}
-	c.RespondOk(ArchiveResponse{
+	return srv.Respond().Json(ArchiveResponse{
 		ID:    arch.ID,
 		State: arch.State,
 		Type:  arch.Type,
@@ -67,22 +66,21 @@ type AddArchiveEntriesRequest struct {
 	Entries []archive.Entry `json:"entries"`
 }
 
-func handleAddArchiveEntries(c jug.Context) {
-	arch, ok := archiveFilter(c)
-	if !ok {
-		return
+func handleAddArchiveEntries(c *srv.Context) *srv.Response {
+	arch, r := archiveFilter(c)
+	if r != nil {
+		return r
 	}
 	var req AddArchiveEntriesRequest
-	if !c.MustBindJSON(&req) {
-		return
+	if r := c.BindJSON(&req); r != nil {
+		return r
 	}
 
 	if err := archive.AddEntries(c, arch, req.Entries); err != nil {
-		handleError(c, err)
-		return
+		return responseFromError(err)
 	}
 
-	c.Status(200)
+	return srv.Respond()
 }
 
 type CompleteArchiveResult struct {
@@ -91,29 +89,28 @@ type CompleteArchiveResult struct {
 	ETag   string `json:"etag"`
 }
 
-func handleCompleteArchive(c jug.Context) {
-	arch, ok := archiveFilter(c)
-	if !ok {
-		return
+func handleCompleteArchive(c *srv.Context) *srv.Response {
+	arch, r := archiveFilter(c)
+	if r != nil {
+		return r
 	}
 
 	if err := archive.Complete(c, arch); err != nil {
-		handleError(c, err)
-		return
+		return responseFromError(err)
 	}
 
-	c.RespondNoContent()
+	return srv.Respond().NoContent()
 }
 
-func handleAbortArchive(c jug.Context) {
-	arch, ok := archiveFilter(c)
-	if !ok {
-		return
+func handleAbortArchive(c *srv.Context) *srv.Response {
+	arch, r := archiveFilter(c)
+	if r != nil {
+		return r
 	}
 
 	if err := archive.Abort(c, arch); err != nil {
-		handleError(c, err)
+		return responseFromError(err)
 	}
 
-	c.RespondNoContent()
+	return srv.Respond().NoContent()
 }

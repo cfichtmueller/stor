@@ -8,32 +8,20 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 )
 
-func hxRefresh(c jug.Context) {
-	if isHxRequest(c) {
-		c.SetHeader("HX-Refresh", "true")
+func hxRedirectFn(path string) srv.Handler {
+	return func(c *srv.Context) *srv.Response {
+		return hxRedirect(c, path)
 	}
 }
 
-func hxRedirectFn(path string) func(c jug.Context) {
-	return func(c jug.Context) {
-		hxRedirect(c, path)
+func hxRedirect(c *srv.Context, path string) *srv.Response {
+	if c.HxRequest() {
+		return srv.Respond().HxRedirect(path)
 	}
-}
-
-func hxRedirect(c jug.Context, path string) {
-	if isHxRequest(c) {
-		c.SetHeader("HX-Redirect", path)
-		return
-	}
-	c.SetHeader("Location", path)
-	c.Status(302)
-}
-
-func hxReswap(c jug.Context, target string) {
-	c.SetHeader("HX-Reswap", target)
+	return srv.Respond().Found(path)
 }
 
 type toast struct {
@@ -53,7 +41,7 @@ type hxTriggerModel struct {
 	Toast toast
 }
 
-func hxTrigger(c jug.Context, m hxTriggerModel) {
+func hxTrigger(m hxTriggerModel) string {
 	d := make(map[string]any)
 	if m.Event != "" {
 		d[m.Event] = map[string]any{}
@@ -69,9 +57,5 @@ func hxTrigger(c jug.Context, m hxTriggerModel) {
 	if err != nil {
 		panic(fmt.Errorf("unable to marshal htmx trigger: %w", err))
 	}
-	c.SetHeader("HX-Trigger", string(b))
-}
-
-func isHxRequest(c jug.Context) bool {
-	return c.GetHeader("Hx-Request") == "true"
+	return string(b)
 }

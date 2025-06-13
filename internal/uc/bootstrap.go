@@ -7,7 +7,7 @@ package uc
 import (
 	"context"
 
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/user"
 )
 
@@ -18,11 +18,10 @@ type BootstrapCommand struct {
 }
 
 func (c BootstrapCommand) Validate() error {
-	return jug.NewValidator().
-		RequireNotEmpty(c.Email, "Email is missing").
-		RequireNotEmpty(c.Password, "Password is missing").
-		Require(c.Password == c.PasswordConfirmation, "Passwords do not match").
-		Validate()
+	v := srv.RequireNotEmpty("email", c.Email, nil)
+	v = srv.RequireNotEmpty("password", c.Password, v)
+	v = srv.Require("password", "password_mismatch", "Passwords do not match", c.Password == c.PasswordConfirmation, v)
+	return srv.Validate(v)
 }
 
 func Bootstrap(ctx context.Context, cmd BootstrapCommand) error {

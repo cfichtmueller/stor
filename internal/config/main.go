@@ -10,11 +10,12 @@ import (
 )
 
 var (
-	DataDir     string
-	ApiHost     string
-	ApiPort     string
-	ConsoleHost string
-	ConsolePort string
+	DataDir      string
+	ApiHost      string
+	ApiPort      string
+	ConsoleHost  string
+	ConsolePort  string
+	TrustProxies bool
 )
 
 func init() {
@@ -23,6 +24,7 @@ func init() {
 	ApiPort = getEnv("API_PORT", "8000")
 	ConsoleHost = os.Getenv("CONSOLE_HOST")
 	ConsolePort = getEnv("CONSOLE_PORT", "8001")
+	TrustProxies = getEnv("TRUST_PROXIES", "false") == "true"
 }
 
 func Mkdir(name string) error {

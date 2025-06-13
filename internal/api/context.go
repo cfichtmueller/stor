@@ -5,7 +5,7 @@
 package api
 
 import (
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 )
 
@@ -14,14 +14,14 @@ var (
 	paramObjectKey  = "objectKey"
 )
 
-func contextGetBucket(c jug.Context) *bucket.Bucket {
+func contextGetBucket(c *srv.Context) *bucket.Bucket {
 	return c.MustGet("bucket").(*bucket.Bucket)
 }
 
-func contextSetBucket(c jug.Context, b *bucket.Bucket) {
+func contextSetBucket(c *srv.Context, b *bucket.Bucket) {
 	c.Set("bucket", b)
 }
 
-func contextGetObjectKey(c jug.Context) string {
-	return c.Param(paramObjectKey)[1:]
+func contextGetObjectKey(c *srv.Context) string {
+	return c.PathValue(paramObjectKey)
 }

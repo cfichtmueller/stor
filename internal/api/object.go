@@ -5,11 +5,11 @@
 package api
 
 import (
-	"log/slog"
-	"strconv"
+	"errors"
+	"io"
 	"time"
 
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/uc"
@@ -33,94 +33,88 @@ func newObjectResponse(o *object.Object) ObjectResponse {
 	}
 }
 
-func handleObjectGet(c jug.Context) {
+func handleObjectGet(c *srv.Context) *srv.Response {
 	query := c.Request().URL.Query()
 	if query.Has(queryArchiveId) {
-		handleGetArchive(c)
-	} else {
-		handleGetObject(c)
+		return handleGetArchive(c)
 	}
+	return handleGetObject(c)
 }
 
-func handleGetObject(c jug.Context) {
-	if _, ok := authenticateApiKey(c); !ok {
-		if !mustAuthenticateNonce(c) {
-			return
+func handleGetObject(c *srv.Context) *srv.Response {
+	_, ok, err := authenticateApiKey(c)
+	if err != nil {
+		return responseFromError(err)
+	}
+	if !ok {
+		if r := mustAuthenticateNonce(c); r != nil {
+			return r
 		}
 	}
-	b, ok := mustGetBucket(c)
-	if !ok {
-		return
+	b, r := mustGetBucket(c)
+	if r != nil {
+		return r
 	}
-	o, ok := mustGetObject(c, b)
-	if !ok {
-		return
+	o, r := mustGetObject(c, b)
+	if r != nil {
+		return r
 	}
-	c.Status(200)
-	c.SetHeader("Content-Length", strconv.FormatInt(int64(o.Size), 10))
-	c.SetHeader("Content-Type", o.ContentType)
-
-	if err := object.Write(c, o, c.Writer()); err != nil {
-		slog.Error("unable to write object", "error", err)
-	}
+	return srv.Respond().
+		ContentLength(int64(o.Size)).
+		BodyFn(o.ContentType, func(w io.Writer) error {
+			return object.Write(c, o, w)
+		})
 }
 
-func handleObjectPost(c jug.Context) {
-	if !mustAuthenticateApiKey(c) {
-		return
+func handleObjectPost(c *srv.Context) *srv.Response {
+	if r := mustAuthenticateApiKey(c); r != nil {
+		return r
 	}
-	b, ok := mustGetBucket(c)
-	if !ok {
-		return
+	b, r := mustGetBucket(c)
+	if r != nil {
+		return r
 	}
 	contextSetBucket(c, b)
 
-	query := c.Request().URL.Query()
-	if query.Has(queryArchives) {
-		handleCreateArchive(c)
-	} else if query.Get(queryArchiveId) != "" {
-		handleCompleteArchive(c)
-	} else if query.Has(queryNonces) {
-		handleCreateNonce(c)
-	} else if query.Has(queryUploads) {
-		handleCreateMultipartUpload(c)
-	} else if query.Get(queryUploadId) != "" {
-		handleCompleteMultipartUpload(c)
-	} else {
-		c.Status(405)
-	}
-}
-
-func handleObjectPut(c jug.Context) {
-	if c.Query(queryArchiveId) != "" {
-		handleAddArchiveEntries(c)
+	if c.HasQuery(queryArchives) {
+		return handleCreateArchive(c)
+	} else if c.Query(queryArchiveId) != "" {
+		return handleCompleteArchive(c)
+	} else if c.HasQuery(queryNonces) {
+		return handleCreateNonce(c)
+	} else if c.HasQuery(queryUploads) {
+		return handleCreateMultipartUpload(c)
 	} else if c.Query(queryUploadId) != "" {
-		handleUploadPart(c)
-	} else {
-		handleCreateOrUpdateObject(c)
+		return handleCompleteMultipartUpload(c)
 	}
+	return srv.Respond().MethodNotAllowed()
 }
 
-func handleObjectDelete(c jug.Context) {
+func handleObjectPut(c *srv.Context) *srv.Response {
 	if c.Query(queryArchiveId) != "" {
-		handleAbortArchive(c)
+		return handleAddArchiveEntries(c)
 	} else if c.Query(queryUploadId) != "" {
-		handleAbortMultipartUpload(c)
-	} else {
-		handleDeleteObject(c)
+		return handleUploadPart(c)
 	}
+	return handleCreateOrUpdateObject(c)
 }
 
-func handleCreateOrUpdateObject(c jug.Context) {
+func handleObjectDelete(c *srv.Context) *srv.Response {
+	if c.Query(queryArchiveId) != "" {
+		return handleAbortArchive(c)
+	} else if c.Query(queryUploadId) != "" {
+		return handleAbortMultipartUpload(c)
+	}
+	return handleDeleteObject(c)
+}
+
+func handleCreateOrUpdateObject(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
 	key := contextGetObjectKey(c)
-	copySource := c.GetHeader("Stor-Copy-Source")
+	copySource := c.Header("Stor-Copy-Source")
 
 	if copySource != "" {
-		if err := createOrUpdateObjectFromCopySource(c, b, key, copySource); err != nil {
-			handleError(c, err)
-		}
-		return
+		return createOrUpdateObjectFromCopySource(c, b, key, copySource)
 	}
 
 	contentType := c.Request().Header.Get("Content-Type")
@@ -129,32 +123,33 @@ func handleCreateOrUpdateObject(c jug.Context) {
 	}
 	d, err := c.GetRawData()
 	if err != nil {
-		handleError(c, err)
-		return
+		if errors.Is(err, srv.ErrNoBody) {
+			return srv.Respond().BadRequest(srv.ErrorDto{
+				Code:    "request_body_missing",
+				Message: "Request body is missing",
+			})
+		}
+		return responseFromError(err)
 	}
 
 	exists, err := object.Exists(c, b.Name, key)
 	if err != nil {
-		handleError(c, err)
-		return
+		return responseFromError(err)
 	}
 
 	if exists {
 		existing, err := object.FindOne(c, b.Name, key, false)
 		if err != nil {
-			handleError(c, err)
-			return
+			return responseFromError(err)
 		}
 		updated, err := uc.UpdateObjectWithData(c, b, existing, object.UpdateCommand{
 			ContentType: contentType,
 			Data:        d,
 		})
 		if err != nil {
-			handleError(c, err)
-			return
+			return responseFromError(err)
 		}
-		respondNoContentWithEtag(c, updated.ETag)
-		return
+		return srv.Respond().NoContent().ETag(updated.ETag)
 	}
 
 	created, err := uc.CreateObjectFromData(c, b, object.CreateCommand{
@@ -163,59 +158,47 @@ func handleCreateOrUpdateObject(c jug.Context) {
 		Data:        d,
 	})
 	if err != nil {
-		handleError(c, err)
-		return
+		return responseFromError(err)
 	}
-
-	respondNoContentWithEtag(c, created.ETag)
+	return srv.Respond().NoContent().ETag(created.ETag)
 }
 
-func createOrUpdateObjectFromCopySource(c jug.Context, b *bucket.Bucket, key, copySource string) error {
+func createOrUpdateObjectFromCopySource(c *srv.Context, b *bucket.Bucket, key, copySource string) *srv.Response {
 	src, err := object.FindOne(c, b.Name, copySource, false)
 	if err != nil {
-		return err
+		return responseFromError(err)
 	}
 	exists, err := object.Exists(c, b.Name, key)
 	if err != nil {
-		return err
+		return responseFromError(err)
 	}
 	if exists {
 		existing, err := object.FindOne(c, b.Name, key, false)
 		if err != nil {
-			return err
+			return responseFromError(err)
 		}
 		updated, err := uc.UpdateObjectFromCopy(c, b, src, existing)
 		if err != nil {
-			return err
+			return responseFromError(err)
 		}
-		respondNoContentWithEtag(c, updated.ETag)
-		return nil
+		return srv.Respond().NoContent().ETag(updated.ETag)
 	}
 	created, err := uc.CreateObjectFromCopy(c, b, src, key)
 	if err != nil {
-		return err
+		return responseFromError(err)
 	}
-
-	respondNoContentWithEtag(c, created.ETag)
-	return nil
+	return srv.Respond().NoContent().ETag(created.ETag)
 }
 
-func handleDeleteObject(c jug.Context) {
-	o, ok := objectFilter(c)
-	if !ok {
-		return
+func handleDeleteObject(c *srv.Context) *srv.Response {
+	o, r := objectFilter(c)
+	if r != nil {
+		return r
 	}
 	b := contextGetBucket(c)
-
 	if err := uc.DeleteObject(c, b, o); err != nil {
-		handleError(c, err)
-		return
+		return responseFromError(err)
 	}
 
-	c.RespondNoContent()
-}
-
-func respondNoContentWithEtag(c jug.Context, etag string) {
-	c.Status(204)
-	c.SetHeader("ETag", etag)
+	return srv.Respond().NoContent()
 }

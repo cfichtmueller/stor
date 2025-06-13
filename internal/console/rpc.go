@@ -6,11 +6,11 @@ package console
 
 import (
 	"fmt"
+	"io"
 	"path/filepath"
 	"time"
 
-	"github.com/cfichtmueller/goparts/e"
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
 	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/uc"
@@ -21,11 +21,11 @@ import (
 // API Key
 //
 
-func handleRpcCreateApiKey(c jug.Context) (e.Node, error) {
+func handleRpcCreateApiKey(c *srv.Context) *srv.Response {
 	principal := contextMustGetPrincipal(c)
 	var description string
 	if err := bindFormData(c, "description", &description); err != nil {
-		return nil, err
+		return responseFromError(err)
 	}
 
 	key, plain, err := apikey.Create(c, principal, apikey.CreateCommand{
@@ -35,98 +35,90 @@ func handleRpcCreateApiKey(c jug.Context) (e.Node, error) {
 
 	if err != nil {
 		//TODO: give actual feedback
-		return nil, err
+		return responseFromError(err)
 	}
 
-	hxTrigger(c, hxTriggerModel{
-		Event: "apiKeysUpdated",
-		Toast: toast{
-			Title:   "Success",
-			Message: "API KEY " + key.Description + " created",
-		},
-	})
-	hxReswap(c, "outerHTML")
-
-	return ui.ApiKeyCreatedDialog(key, plain), nil
+	return nodeResponse(ui.ApiKeyCreatedDialog(key, plain)).
+		HxTrigger(hxTrigger(hxTriggerModel{
+			Event: "apiKeysUpdated",
+			Toast: newToast("Success", "API KEY %s created", key.Description),
+		})).
+		HxReswap("outerHTML")
 }
 
-func handleRpcDeleteApiKey(c jug.Context) {
+func handleRpcDeleteApiKey(c *srv.Context) *srv.Response {
 	key := contextGetApiKey(c)
 
 	if err := apikey.Delete(c, key.ID); err != nil {
-		c.HandleError(err)
-		return
+		return responseFromError(err)
 	}
-	hxRefresh(c)
-	hxTrigger(c, hxTriggerModel{
-		Toast: newToast("Success", "API key deleted"),
-	})
+	return srv.Respond().
+		HxRefresh().
+		HxTrigger(hxTrigger(hxTriggerModel{
+			Toast: newToast("Success", "API key deleted"),
+		}))
 }
 
 //
 // Bucket
 //
 
-func handleRpcCreateBucket(c jug.Context) {
-	if !must("parse form", c, c.Request().ParseForm()) {
-		return
-	}
-	values := c.Request().Form
+func handleRpcCreateBucket(c *srv.Context) *srv.Response {
+	values := c.FormValues()
 	name := values.Get("name")
 
 	if _, err := uc.CreateBucket(c, name); err != nil {
-		hxTrigger(c, hxTriggerModel{
-			Toast: newToast("Error", "Failed to create bucket: %v", err),
-		})
-		return
+		return srv.Respond().
+			HxTrigger(hxTrigger(hxTriggerModel{
+				Toast: newToast("Error", "Failed to create bucket: %v", err),
+			}))
 	}
 
-	hxTrigger(c, hxTriggerModel{
-		Event: "bucketsUpdated",
-		Toast: newToast("Success", "Bucket %s created", name),
-	})
+	return srv.Respond().
+		HxTrigger(hxTrigger(hxTriggerModel{
+			Event: "bucketsUpdated",
+			Toast: newToast("Success", "Bucket %s created", name),
+		}))
 }
 
 //
 // Object
 //
 
-func handleRpcOpenObject(c jug.Context) {
+func handleRpcOpenObject(c *srv.Context) *srv.Response {
 	bucketName := c.Query("bucket")
-	key, err := c.StringQuery("key")
-	if err != nil {
-		c.HandleError(err)
-		return
+	key, r := c.StringQuery("key")
+	if r != nil {
+		return r
 	}
 
 	o, err := object.FindOne(c, bucketName, key, false)
 	if err != nil {
-		c.HandleError(err)
-		return
+		return responseFromError(err)
 	}
 
-	c.SetContentType(o.ContentType)
-	c.SetHeader("Content-Disposition", "inline")
-	c.Status(200)
-	object.Write(c, o, c.Writer())
+	return srv.Respond().
+		Header("Content-Disposition", "inline").
+		BodyFn(o.ContentType, func(w io.Writer) error {
+			return object.Write(c, o, w)
+		})
 }
 
-func handleRpcDownloadObject(c jug.Context) {
+func handleRpcDownloadObject(c *srv.Context) *srv.Response {
 	bucketName := c.Query("bucket")
-	key, err := c.StringQuery("key")
-	if err != nil {
-		c.HandleError(err)
-		return
+	key, r := c.StringQuery("key")
+	if r != nil {
+		return r
 	}
 
 	o, err := object.FindOne(c, bucketName, key, false)
 	if err != nil {
-		c.HandleError(err)
-		return
+		return responseFromError(err)
 	}
 
-	c.SetContentType(o.ContentType)
-	c.SetHeader("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filepath.Base(o.Key)))
-	c.Status(200)
-	object.Write(c, o, c.Writer())
+	return srv.Respond().
+		Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filepath.Base(o.Key))).
+		BodyFn(o.ContentType, func(w io.Writer) error {
+			return object.Write(c, o, w)
+		})
 }

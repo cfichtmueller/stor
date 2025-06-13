@@ -1,9 +1,8 @@
 package api
 
 import (
-	"github.com/cfichtmueller/jug"
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
-	"github.com/cfichtmueller/stor/internal/ec"
 	"github.com/cfichtmueller/stor/internal/util"
 )
 
@@ -12,26 +11,23 @@ type ListBucketResponse struct {
 	IsTruncated bool             `json:"isTruncated"`
 }
 
-func handleListBuckets(c jug.Context) {
+func handleListBuckets(c *srv.Context) *srv.Response {
 	startAfter := c.Query("start-after")
-	maxBuckets, err := c.DefaultIntQuery("max-buckets", 1000)
-	if err != nil {
-		handleError(c, ec.InvalidArgument)
-		return
+	maxBuckets, r := c.IntQueryOrDefault("max-buckets", 1000)
+	if r != nil {
+		return r
 	}
 
 	buckets, err := bucket.List(c, startAfter, maxBuckets)
 	if err != nil {
-		handleError(c, err)
-		return
+		return responseFromError(err)
 	}
 	count, err := bucket.Count(c, startAfter)
 	if err != nil {
-		handleError(c, err)
-		return
+		return responseFromError(err)
 	}
 
-	c.RespondOk(ListBucketResponse{
+	return srv.Respond().Json(ListBucketResponse{
 		Buckets:     util.MapMany(buckets, newBucketResponse),
 		IsTruncated: count > len(buckets),
 	})
