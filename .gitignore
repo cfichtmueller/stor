@@ -3,3 +3,4 @@ stor
 .vscode/
 __debug*
 data/
+.env.*
