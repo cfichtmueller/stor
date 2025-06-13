@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/config"
 	"github.com/cfichtmueller/stor/internal/db"
 	"github.com/cfichtmueller/stor/internal/domain"
@@ -118,6 +119,12 @@ func Configure() {
 	deleteObjectVersionStmt = db.Prepare("DELETE FROM object_versions WHERE id = ?")
 
 	go worker()
+}
+
+func ValidateKey(key string) error {
+	v := srv.RequireNotEmpty("key", key, nil)
+	v = srv.RequireMaxLength("key", 1024, key, v)
+	return srv.Validate(v)
 }
 
 func List(ctx context.Context, bucketName, startAfter string, limit int) ([]*Object, error) {

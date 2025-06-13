@@ -20,7 +20,10 @@ type CreateMultipartUploadResult struct {
 
 func handleCreateMultipartUpload(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
-	key := contextGetObjectKey(c)
+	key, r := contextGetObjectKey(c)
+	if r != nil {
+		return r
+	}
 	contentType := c.Request().Header.Get("Content-Type")
 
 	slog.Info("create multipart upload", "bucket", b.Name, "key", key, "content-type", contentType)
@@ -64,7 +67,10 @@ type CompleteMultipartUploadResult struct {
 
 func handleCompleteMultipartUpload(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
-	key := contextGetObjectKey(c)
+	key, r := contextGetObjectKey(c)
+	if r != nil {
+		return r
+	}
 	uploadId := c.Query(queryUploadId)
 	if uploadId == "" {
 		return responseFromError(ec.InvalidArgument)
@@ -85,7 +91,10 @@ func handleCompleteMultipartUpload(c *srv.Context) *srv.Response {
 
 func handleAbortMultipartUpload(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
-	key := contextGetObjectKey(c)
+	key, r := contextGetObjectKey(c)
+	if r != nil {
+		return r
+	}
 	uploadId := c.Query(queryUploadId)
 	if uploadId == "" {
 		return responseFromError(ec.InvalidArgument)

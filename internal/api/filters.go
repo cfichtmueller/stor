@@ -26,8 +26,8 @@ var (
 
 func bucketFilter(c *srv.Context, next srv.Handler) *srv.Response {
 	name := c.PathValue(paramBucketName)
-	if len(name) < 3 {
-		return responseFromError(ec.NoSuchBucket)
+	if err := bucket.ValidateName(name); err != nil {
+		return responseFromError(err)
 	}
 	b, err := bucket.FindOne(c, name)
 	if err != nil {
@@ -39,8 +39,8 @@ func bucketFilter(c *srv.Context, next srv.Handler) *srv.Response {
 
 func mustGetBucket(c *srv.Context) (*bucket.Bucket, *srv.Response) {
 	name := c.PathValue(paramBucketName)
-	if len(name) < 3 {
-		return nil, responseFromError(ec.NoSuchBucket)
+	if err := bucket.ValidateName(name); err != nil {
+		return nil, responseFromError(err)
 	}
 	b, err := bucket.FindOne(c, name)
 	if err != nil {
@@ -51,7 +51,10 @@ func mustGetBucket(c *srv.Context) (*bucket.Bucket, *srv.Response) {
 
 func objectFilter(c *srv.Context) (*object.Object, *srv.Response) {
 	b := contextGetBucket(c)
-	key := contextGetObjectKey(c)
+	key, r := contextGetObjectKey(c)
+	if r != nil {
+		return nil, r
+	}
 
 	o, err := object.FindOne(c, b.Name, key, false)
 	if err != nil {
@@ -62,7 +65,10 @@ func objectFilter(c *srv.Context) (*object.Object, *srv.Response) {
 }
 
 func mustGetObject(c *srv.Context, b *bucket.Bucket) (*object.Object, *srv.Response) {
-	key := contextGetObjectKey(c)
+	key, r := contextGetObjectKey(c)
+	if r != nil {
+		return nil, r
+	}
 
 	o, err := object.FindOne(c, b.Name, key, false)
 	if err != nil {
@@ -125,7 +131,8 @@ func authenticateNonce(c *srv.Context) (bool, error) {
 		}
 		return false, err
 	}
-	if n.Bucket != c.PathValue(paramBucketName) || n.Key != contextGetObjectKey(c) {
+	key, r := contextGetObjectKey(c)
+	if n.Bucket != c.PathValue(paramBucketName) || n.Key != key || r != nil {
 		return false, ec.Unauthorized
 	}
 	return true, nil
@@ -144,7 +151,10 @@ func mustAuthenticateNonce(c *srv.Context) *srv.Response {
 
 func archiveFilter(c *srv.Context) (*archive.Archive, *srv.Response) {
 	b := contextGetBucket(c)
-	key := contextGetObjectKey(c)
+	key, r := contextGetObjectKey(c)
+	if r != nil {
+		return nil, r
+	}
 	archiveId := c.Query(queryArchiveId)
 	if archiveId == "" {
 		return nil, responseFromError(ec.InvalidArgument)

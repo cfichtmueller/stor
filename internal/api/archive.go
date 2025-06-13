@@ -17,7 +17,10 @@ type CreateArchiveResult struct {
 
 func handleCreateArchive(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
-	key := contextGetObjectKey(c)
+	key, r := contextGetObjectKey(c)
+	if r != nil {
+		return r
+	}
 	t := c.Query("type")
 
 	id, err := archive.Create(c, archive.CreateCommand{

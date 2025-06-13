@@ -7,6 +7,7 @@ package api
 import (
 	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
+	"github.com/cfichtmueller/stor/internal/domain/object"
 )
 
 var (
@@ -22,6 +23,10 @@ func contextSetBucket(c *srv.Context, b *bucket.Bucket) {
 	c.Set("bucket", b)
 }
 
-func contextGetObjectKey(c *srv.Context) string {
-	return c.PathValue(paramObjectKey)
+func contextGetObjectKey(c *srv.Context) (string, *srv.Response) {
+	key := c.PathValue(paramObjectKey)
+	if err := object.ValidateKey(key); err != nil {
+		return "", responseFromError(err)
+	}
+	return key, nil
 }

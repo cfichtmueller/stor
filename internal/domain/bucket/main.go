@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/db"
 	"github.com/cfichtmueller/stor/internal/domain"
 	"github.com/cfichtmueller/stor/internal/ec"
@@ -60,6 +61,16 @@ func Configure() {
 	deleteStmt = db.Prepare("DELETE FROM buckets WHERE name = $1")
 }
 
+func ValidateName(name string) error {
+	v := srv.RequireNotEmpty("name", name, nil)
+	v = srv.RequireMaxLength("name", 63, name, v)
+	v = srv.Require("name", srv.ValidationCodeInvalid, "name must be a valid bucket name", name != "api" && name != "css" && name != "img", v)
+	if v == nil {
+		v = srv.RequireRegex("name", name, bucketNamePattern, nil)
+	}
+	return srv.Validate(v)
+}
+
 func GetStats(ctx context.Context) (Stats, error) {
 	var stats Stats
 	if err := statsStmt.QueryRowContext(ctx).Scan(&stats.Count, &stats.TotalObjects); err != nil {
@@ -69,9 +80,6 @@ func GetStats(ctx context.Context) (Stats, error) {
 }
 
 func Create(ctx context.Context, cmd CreateCommand) (*Bucket, error) {
-	if !bucketNamePattern.MatchString(cmd.Name) || cmd.Name == "api" || cmd.Name == "css" || cmd.Name == "img" {
-		return nil, ec.InvalidArgument
-	}
 	b := &Bucket{
 		Name:      cmd.Name,
 		Objects:   0,

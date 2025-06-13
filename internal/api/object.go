@@ -110,7 +110,10 @@ func handleObjectDelete(c *srv.Context) *srv.Response {
 
 func handleCreateOrUpdateObject(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
-	key := contextGetObjectKey(c)
+	key, r := contextGetObjectKey(c)
+	if r != nil {
+		return r
+	}
 	copySource := c.Header("Stor-Copy-Source")
 
 	if copySource != "" {

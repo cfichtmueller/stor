@@ -54,6 +54,9 @@ func handleBucketPost(c *srv.Context) *srv.Response {
 
 func handleCreateBucket(c *srv.Context) *srv.Response {
 	name := c.PathValue("bucketName")
+	if err := bucket.ValidateName(name); err != nil {
+		return responseFromError(err)
+	}
 
 	b, err := uc.CreateBucket(c, name)
 	if err != nil {

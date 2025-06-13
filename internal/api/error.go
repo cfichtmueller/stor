@@ -7,15 +7,21 @@ package api
 import (
 	"encoding/json"
 	"log/slog"
+	"net/http"
 
 	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/ec"
 )
 
 func responseFromError(err error) *srv.Response {
+	if ve, ok := err.(*srv.ValidationError); ok {
+		ve.Code = ec.InvalidArgument.Code
+		return srv.Respond().Status(http.StatusBadRequest).Json(ve)
+	}
+
 	e, ok := err.(*ec.Error)
 	if !ok {
-		return srv.Respond().Error(err)
+		return srv.Respond().InternalServerError(err)
 	}
 
 	b, merr := json.Marshal(e)
