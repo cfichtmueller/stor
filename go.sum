@@ -2,6 +2,8 @@ github.com/cfichtmueller/goparts v0.1.0 h1:P8pf4O+tCR2zNKrBRoImbXGGEKflh3iEUc83t
 github.com/cfichtmueller/goparts v0.1.0/go.mod h1:NUdEe8fu8QTB/0vB1Ju6BBratuRQXywTz1IzNcqpajY=
 github.com/cfichtmueller/srv v0.2.0 h1:kZJGUvASGqvM3CPxUJuJi4UPGf7weBkCjZMCqQrpE8s=
 github.com/cfichtmueller/srv v0.2.0/go.mod h1:JADG/gELiNHfLZVci0QP9/LQDIT4QBG3d3gCj95rDro=
+github.com/cfichtmueller/srv v0.3.0 h1:zxJkephzn380qFCgKpPbC1nhVvIkh3hvC9bajjQrdls=
+github.com/cfichtmueller/srv v0.3.0/go.mod h1:61MKspkibIQeuehO4Fs7IhGRCYw8BxG0noV9hWIU3os=
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
