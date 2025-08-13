@@ -496,12 +496,6 @@ func purgeContext(ctx context.Context) {
 		return
 	}
 
-	cleanup := func() {
-		purgeMutex.Lock()
-		purgeFlag = false
-		purgeMutex.Unlock()
-	}
-
 	purged := 0
 	for _, id := range versionIds {
 		select {
@@ -509,7 +503,6 @@ func purgeContext(ctx context.Context) {
 			if purged > 0 {
 				slog.Info("purged object versions", "versions", purged)
 			}
-			cleanup()
 			return
 		default:
 			if err := purgeObjectVersion(ctx, id); err != nil {
@@ -523,7 +516,9 @@ func purgeContext(ctx context.Context) {
 	if purged > 0 {
 		slog.Info("purged object versions", "versions", purged)
 	}
-	cleanup()
+	purgeMutex.Lock()
+	purgeFlag = false
+	purgeMutex.Unlock()
 }
 
 func getDeletedObjectIds(ctx context.Context) ([]string, error) {
