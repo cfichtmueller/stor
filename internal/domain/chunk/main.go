@@ -295,7 +295,7 @@ func find(ctx context.Context, id string) (*Chunk, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("unable to check chunk existence: %v", err)
+		return nil, fmt.Errorf("unable to check chunk existence: %w", err)
 	}
 	return &chunk, nil
 }
