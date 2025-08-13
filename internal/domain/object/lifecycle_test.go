@@ -49,7 +49,7 @@ func Test_lifecycle(t *testing.T) {
 		t.Errorf("unable to update object: %v", err)
 	}
 
-	purgeContext(context.Background())
+	purge()
 
 	expectRows(t, "update object", objectsTable, initialObjects+1)
 	expectRows(t, "update object", objectVersionsTable, initialVersions+1)
@@ -60,7 +60,7 @@ func Test_lifecycle(t *testing.T) {
 		t.Errorf("unable to delete object: %v", err)
 	}
 
-	purgeContext(context.Background())
+	purge()
 
 	expectRows(t, "delete object", objectsTable, initialObjects)
 	expectRows(t, "delete object", objectVersionsTable, initialVersions)

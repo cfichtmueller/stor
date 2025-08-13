@@ -458,36 +458,30 @@ func worker() {
 }
 
 func purge() {
-	ctx, cancel := context.WithTimeout(context.Background(), maxPurgeTime)
-	purgeContext(ctx)
-	defer cancel()
-}
-
-func purgeContext(ctx context.Context) {
 	if !purgeFlag {
 		return
 	}
+	ctx := context.Background()
+	start := time.Now()
 	objectIds, err := getDeletedObjectIds(ctx)
 	if err != nil {
 		slog.Error("unable to get deleted objects", "error", err)
 		return
 	}
-	for i, id := range objectIds {
-		select {
-		case <-ctx.Done():
-			if i > 0 {
-				slog.Error("purged objects", "objects", i)
-			}
+	purgedObjects := 0
+	for _, id := range objectIds {
+		if err := purgeObject(ctx, id); err != nil {
+			slog.Error("unable to purge object", "object", id, "error", err)
 			return
-		default:
-			if err := purgeObject(ctx, id); err != nil {
-				slog.Error("unable to purge object", "object", id, "error", err)
-				return
-			}
+		}
+		purgedObjects += 1
+		if time.Since(start) > maxPurgeTime {
+			slog.Info("purged objects", "objects", purgedObjects)
+			return
 		}
 	}
-	if len(objectIds) > 0 {
-		slog.Info("purged objects", "objects", len(objectIds))
+	if purgedObjects > 0 {
+		slog.Info("purged objects", "objects", purgedObjects)
 	}
 
 	versionIds, err := getDeletedObjectVersionIds(ctx)
@@ -496,25 +490,21 @@ func purgeContext(ctx context.Context) {
 		return
 	}
 
-	purged := 0
+	purgedVersions := 0
 	for _, id := range versionIds {
-		select {
-		case <-ctx.Done():
-			if purged > 0 {
-				slog.Info("purged object versions", "versions", purged)
-			}
+		if err := purgeObjectVersion(ctx, id); err != nil {
+			slog.Error("unable to purge object version", "version", id, "error", err)
+		} else {
+			purgedVersions += 1
+		}
+		if time.Since(start) > maxPurgeTime {
+			slog.Info("purged object versions", "versions", purgedVersions)
 			return
-		default:
-			if err := purgeObjectVersion(ctx, id); err != nil {
-				slog.Error("unable to purge object version", "version", id, "error", err)
-			} else {
-				purged += 1
-			}
 		}
 	}
 
-	if purged > 0 {
-		slog.Info("purged object versions", "versions", purged)
+	if purgedVersions > 0 {
+		slog.Info("purged object versions", "versions", purgedVersions)
 	}
 	purgeMutex.Lock()
 	purgeFlag = false
