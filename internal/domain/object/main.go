@@ -495,22 +495,24 @@ func purgeContext(ctx context.Context) {
 		slog.Error("unable to get deleted object version ids", "error", err)
 		return
 	}
-	for i, id := range versionIds {
+	purged := 0
+	for _, id := range versionIds {
 		select {
 		case <-ctx.Done():
-			if i > 0 {
-				slog.Info("purged object versions", "versions", i)
+			if purged > 0 {
+				slog.Info("purged object versions", "versions", purged)
 			}
 		default:
 			if err := purgeObjectVersion(ctx, id); err != nil {
 				slog.Error("unable to purge object version", "version", id, "error", err)
-				return
+			} else {
+				purged += 1
 			}
 		}
 	}
 
-	if len(versionIds) > 0 {
-		slog.Info("purged object versions", "versions", len(versionIds))
+	if purged > 0 {
+		slog.Info("purged object versions", "versions", purged)
 	}
 
 	purgeMutex.Lock()
