@@ -472,9 +472,9 @@ func purge() {
 	for _, id := range objectIds {
 		if err := purgeObject(ctx, id); err != nil {
 			slog.Error("unable to purge object", "object", id, "error", err)
-			return
+		} else {
+			purgedObjects += 1
 		}
-		purgedObjects += 1
 		if time.Since(start) > maxPurgeTime {
 			slog.Info("purged objects", "objects", purgedObjects)
 			return
