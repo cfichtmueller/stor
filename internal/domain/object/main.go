@@ -503,7 +503,7 @@ func purgeContext(ctx context.Context) {
 			}
 		default:
 			if err := purgeObjectVersion(ctx, id); err != nil {
-				slog.Error("unable to purge object versions", "error", err)
+				slog.Error("unable to purge object version", "version", id, "error", err)
 				return
 			}
 		}
