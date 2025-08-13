@@ -7,7 +7,7 @@ require (
 	github.com/cfichtmueller/srv v0.3.0
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/spf13/cobra v1.8.1
-	golang.org/x/crypto v0.31.0
+	golang.org/x/crypto v0.41.0
 	golang.org/x/sync v0.10.0
 )
 
