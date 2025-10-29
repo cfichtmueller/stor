@@ -26,6 +26,14 @@ func BucketSettingsPage(b *bucket.Bucket) e.Node {
 				IconTrash,
 				e.Span(e.Raw("Empty Bucket")),
 			),
+			e.Button(
+				e.Class(cn(btn, btnDanger)),
+				e.HXGet("/c/delete-bucket-dialog?bucket="+b.Name),
+				e.HXTarget("body"),
+				e.HXSwap("beforeend"),
+				IconTrash,
+				e.Span(e.Raw("Delete Bucket")),
+			),
 		),
 	)
 }

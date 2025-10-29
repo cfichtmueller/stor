@@ -9,7 +9,6 @@ import (
 
 	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
-	"github.com/cfichtmueller/stor/internal/domain/object"
 	"github.com/cfichtmueller/stor/internal/ec"
 	"github.com/cfichtmueller/stor/internal/uc"
 )
@@ -69,15 +68,9 @@ func handleCreateBucket(c *srv.Context) *srv.Response {
 func handleDeleteBucket(c *srv.Context) *srv.Response {
 	b := contextGetBucket(c)
 
-	count, err := object.Count(c, b.Name, "")
-	if err != nil {
+	if err := uc.DeleteBucket(c, b); err != nil {
 		return responseFromError(err)
 	}
-	if count > 0 {
-		return responseFromError(ec.BucketNotEmpty)
-	}
-
-	bucket.Delete(c, b.Name)
 
 	return srv.Respond().NoContent()
 }
