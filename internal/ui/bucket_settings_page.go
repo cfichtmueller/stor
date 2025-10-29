@@ -17,7 +17,15 @@ func BucketSettingsPage(b *bucket.Bucket) e.Node {
 		PathBreadcrumbs(links, b, ""),
 		PageTitle(""),
 		e.Div(
-			e.Text("Settings"),
+			e.Class("flex flex-col gap-y-2"),
+			e.Button(
+				e.Class(cn(btn, btnDanger)),
+				e.HXGet("/c/empty-bucket-dialog?bucket="+b.Name),
+				e.HXTarget("body"),
+				e.HXSwap("beforeend"),
+				IconTrash,
+				e.Span(e.Raw("Empty Bucket")),
+			),
 		),
 	)
 }

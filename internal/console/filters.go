@@ -33,6 +33,19 @@ func bucketFilter(c *srv.Context, next srv.Handler) *srv.Response {
 	return next(c)
 }
 
+func withBucketFromQuery(c *srv.Context, next srv.Handler) *srv.Response {
+	name := c.Query("bucket")
+	if name == "" {
+		return next(c)
+	}
+	b, err := bucket.FindOne(c, name)
+	if err != nil {
+		return responseFromError(err)
+	}
+	contextSetBucket(c, b)
+	return next(c)
+}
+
 func apiKeyFilter(c *srv.Context, next srv.Handler) *srv.Response {
 	keyId := c.Query("key")
 	if keyId == "" {

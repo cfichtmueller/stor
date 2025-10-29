@@ -10,6 +10,10 @@ import (
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
 )
 
+func contextSetBucket(c *srv.Context, b *bucket.Bucket) {
+	c.Set("bucket", b)
+}
+
 func contextGetBucket(c *srv.Context) *bucket.Bucket {
 	return c.MustGet("bucket").(*bucket.Bucket)
 }

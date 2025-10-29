@@ -52,6 +52,7 @@ func Configure() *srv.Server {
 	componentsGroup.GET("/buckets-table", renderNode(handleRenderBucketsTable))
 	componentsGroup.GET("/create-api-key-dialog", renderNodeFn(ui.CreateApiKeyDialog))
 	componentsGroup.GET("/create-bucket-dialog", renderNodeFn(ui.CreateBucketDialog))
+	componentsGroup.GET("/empty-bucket-dialog", renderNode(handleRenderEmptyBucketDialog), withBucketFromQuery)
 	componentsGroup.GET("/dashboard-metrics", renderNode(handleRenderDashboardMetrics))
 	// /c/objects-table
 
@@ -60,6 +61,7 @@ func Configure() *srv.Server {
 	r.POST("/api-key", handleRpcCreateApiKey)
 	r.DELETE("/api-key", handleRpcDeleteApiKey, apiKeyFilter)
 	r.POST("/bucket", handleRpcCreateBucket)
+	r.POST("/empty-bucket", handleRpcEmptyBucket, withBucketFromQuery)
 
 	console.GET("/open", handleRpcOpenObject, authenticatedFilter)
 	console.GET("/download", handleRpcDownloadObject, authenticatedFilter)

@@ -57,6 +57,11 @@ func handleRenderBucketsTable(c *srv.Context) (e.Node, error) {
 	return ui.BucketsTable(b), nil
 }
 
+func handleRenderEmptyBucketDialog(c *srv.Context) (e.Node, error) {
+	b := contextGetBucket(c)
+	return ui.EmptyBucketDialog(b), nil
+}
+
 //
 // Dashboard
 //
