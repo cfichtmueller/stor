@@ -51,6 +51,18 @@ func handleObjectHead(c *srv.Context) *srv.Response {
 	if r != nil {
 		return r
 	}
+	if r := c.ConditionalIfMatch(o.ETag); r != nil {
+		return r
+	}
+	if r := c.ConditionalIfModifiedSince(o.CreatedAt); r != nil {
+		return r
+	}
+	if r := c.ConditionalIfNoneMatch(o.ETag); r != nil {
+		return r
+	}
+	if r := c.ConditionalIfUnmodifiedSince(o.CreatedAt); r != nil {
+		return r
+	}
 	return srv.Respond().
 		ContentLength(int64(o.Size)).
 		ContentType(o.ContentType).
@@ -82,6 +94,18 @@ func handleGetObject(c *srv.Context) *srv.Response {
 	}
 	o, r := mustGetObject(c, b)
 	if r != nil {
+		return r
+	}
+	if r := c.ConditionalIfMatch(o.ETag); r != nil {
+		return r
+	}
+	if r := c.ConditionalIfModifiedSince(o.CreatedAt); r != nil {
+		return r
+	}
+	if r := c.ConditionalIfNoneMatch(o.ETag); r != nil {
+		return r
+	}
+	if r := c.ConditionalIfUnmodifiedSince(o.CreatedAt); r != nil {
 		return r
 	}
 	return srv.Respond().
