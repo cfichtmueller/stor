@@ -4,11 +4,11 @@ go 1.24.6
 
 require (
 	github.com/cfichtmueller/goparts v0.3.0
-	github.com/cfichtmueller/srv v0.4.0
+	github.com/cfichtmueller/srv v0.5.1
 	github.com/mattn/go-sqlite3 v1.14.32
-	github.com/spf13/cobra v1.10.1
-	golang.org/x/crypto v0.42.0
-	golang.org/x/sync v0.17.0
+	github.com/spf13/cobra v1.10.2
+	golang.org/x/crypto v0.45.0
+	golang.org/x/sync v0.19.0
 )
 
 require (
