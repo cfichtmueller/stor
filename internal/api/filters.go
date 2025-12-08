@@ -74,6 +74,9 @@ func mustGetObject(c *srv.Context, b *bucket.Bucket) (*object.Object, *srv.Respo
 	if err != nil {
 		return nil, responseFromError(err)
 	}
+	if o == nil || o.Deleted {
+		return nil, responseFromError(ec.NoSuchKey)
+	}
 
 	return o, nil
 }
