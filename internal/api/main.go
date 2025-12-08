@@ -22,6 +22,7 @@ func Configure() *srv.Server {
 	bucketGroup.DELETE("", handleDeleteBucket, bucketFilter)
 
 	objectGroup := server.Group("/{bucketName}/{objectKey...}")
+	objectGroup.HEAD("", handleObjectHead)
 	objectGroup.GET("", handleObjectGet)
 	objectGroup.POST("", handleObjectPost, authenticatedFilter, bucketFilter)
 	objectGroup.PUT("", handleObjectPut, authenticatedFilter, bucketFilter)

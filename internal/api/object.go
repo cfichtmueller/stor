@@ -33,6 +33,29 @@ func newObjectResponse(o *object.Object) ObjectResponse {
 	}
 }
 
+func handleObjectHead(c *srv.Context) *srv.Response {
+	_, ok, err := authenticateApiKey(c)
+	if err != nil {
+		return responseFromError(err)
+	}
+	if !ok {
+		if r := mustAuthenticateNonce(c); r != nil {
+			return r
+		}
+	}
+	b, r := mustGetBucket(c)
+	if r != nil {
+		return r
+	}
+	o, r := mustGetObject(c, b)
+	if r != nil {
+		return r
+	}
+	return srv.Respond().
+		ContentLength(int64(o.Size)).
+		ContentType(o.ContentType)
+}
+
 func handleObjectGet(c *srv.Context) *srv.Response {
 	query := c.Request().URL.Query()
 	if query.Has(queryArchiveId) {
