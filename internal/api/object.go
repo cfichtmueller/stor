@@ -53,7 +53,9 @@ func handleObjectHead(c *srv.Context) *srv.Response {
 	}
 	return srv.Respond().
 		ContentLength(int64(o.Size)).
-		ContentType(o.ContentType)
+		ContentType(o.ContentType).
+		LastModified(o.CreatedAt).
+		ETag(o.ETag)
 }
 
 func handleObjectGet(c *srv.Context) *srv.Response {
@@ -84,6 +86,9 @@ func handleGetObject(c *srv.Context) *srv.Response {
 	}
 	return srv.Respond().
 		ContentLength(int64(o.Size)).
+		ContentType(o.ContentType).
+		LastModified(o.CreatedAt).
+		ETag(o.ETag).
 		BodyFn(o.ContentType, func(w io.Writer) error {
 			return object.Write(c, o, w)
 		})
