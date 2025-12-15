@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/cfichtmueller/stor/internal/db"
@@ -29,13 +30,14 @@ func (s *Session) IsExpired() bool {
 }
 
 var (
-	TTL         = time.Hour
-	ErrNotFound = fmt.Errorf("session not found")
-	createStmt  *sql.Stmt
-	listStmt    *sql.Stmt
-	getStmt     *sql.Stmt
-	updateStmt  *sql.Stmt
-	deleteStmt  *sql.Stmt
+	TTL               = time.Hour
+	ErrNotFound       = fmt.Errorf("session not found")
+	createStmt        *sql.Stmt
+	listStmt          *sql.Stmt
+	getStmt           *sql.Stmt
+	updateStmt        *sql.Stmt
+	deleteStmt        *sql.Stmt
+	deleteExpiredStmt *sql.Stmt
 )
 
 func Configure() {
@@ -44,6 +46,8 @@ func Configure() {
 	getStmt = db.Prepare("SELECT * FROM sessions where id = $1 LIMIT 1")
 	updateStmt = db.Prepare("UPDATE sessions SET last_seen_at = $1, expires_at = $2 WHERE id = $3")
 	deleteStmt = db.Prepare("DELETE FROM sessions WHERE id = $1")
+	deleteExpiredStmt = db.Prepare("DELETE FROM sessions WHERE expires_at < $1")
+	go worker()
 }
 
 func Create(ctx context.Context, user, ipAddress string) (*Session, error) {
@@ -124,4 +128,19 @@ func decode(row Scanner) (*Session, error) {
 
 type Scanner interface {
 	Scan(dest ...any) error
+}
+
+func worker() {
+	ticker := time.NewTicker(time.Hour)
+	for {
+		purgeSessions()
+		<-ticker.C
+	}
+}
+
+func purgeSessions() {
+	slog.Info("purging expired sessions")
+	if _, err := deleteExpiredStmt.Exec(domain.TimeNow()); err != nil {
+		slog.Error("unable to purge expired sessions", "error", err)
+	}
 }
