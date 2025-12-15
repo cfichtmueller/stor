@@ -64,28 +64,29 @@ func authenticatedFilter(c *srv.Context, next srv.Handler) *srv.Response {
 	if err != nil {
 		return hxRedirect(c, "/login")
 	}
-	userId, err := authenticateSession(c, authCookie)
+	s, err := authenticateSession(c, authCookie)
 	if err != nil {
 		if errors.Is(err, ErrLoginRequired) {
 			return hxRedirect(c, "/login")
 		}
 		return responseFromError(err)
 	}
-	contextSetPrincipal(c, user.Urn(userId))
+	contextSetPrincipal(c, user.Urn(s.User))
+	contextSetAuthenticatedSession(c, s)
 	return next(c)
 }
 
 // authenticates a session and returns the user's id if successful
-func authenticateSession(c *srv.Context, sessionId string) (string, error) {
+func authenticateSession(c *srv.Context, sessionId string) (*session.Session, error) {
 	s, err := session.Get(c, sessionId)
 	if err != nil {
 		if errors.Is(err, session.ErrNotFound) {
-			return "", ErrLoginRequired
+			return nil, ErrLoginRequired
 		}
-		return "", err
+		return nil, err
 	}
 	if s.IsExpired() {
-		return "", ErrLoginRequired
+		return nil, ErrLoginRequired
 	}
-	return s.User, nil
+	return s, nil
 }

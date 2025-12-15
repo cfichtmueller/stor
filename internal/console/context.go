@@ -8,6 +8,7 @@ import (
 	"github.com/cfichtmueller/srv"
 	"github.com/cfichtmueller/stor/internal/domain/apikey"
 	"github.com/cfichtmueller/stor/internal/domain/bucket"
+	"github.com/cfichtmueller/stor/internal/domain/session"
 )
 
 func contextSetBucket(c *srv.Context, b *bucket.Bucket) {
@@ -24,6 +25,14 @@ func contextGetApiKey(c *srv.Context) *apikey.ApiKey {
 
 func contextSetPrincipal(c *srv.Context, principal string) {
 	c.Set("principal", principal)
+}
+
+func contextSetAuthenticatedSession(c *srv.Context, session *session.Session) {
+	c.Set("authenticatedSession", session)
+}
+
+func contextMustGetAuthenticatedSession(c *srv.Context) *session.Session {
+	return c.MustGet("authenticatedSession").(*session.Session)
 }
 
 func contextMustGetPrincipal(c *srv.Context) string {
