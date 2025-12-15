@@ -1,9 +1,9 @@
-FROM node:24.5.0-alpine3.22 AS node
+FROM node:24.12.0-alpine3.23 AS node
 WORKDIR /stor
 COPY . .
-RUN npx tailwindcss@3.4.17 -i ./internal/ui/css/input.css -o ./internal/ui/css/style.css -m
+RUN npx tailwindcss@3.4.19 -i ./internal/ui/css/input.css -o ./internal/ui/css/style.css -m
 
-FROM golang:1.24.6-alpine3.22 AS build
+FROM golang:1.25.5-alpine3.23 AS build
 
 ENV CGO_ENABLED=1
 ENV GOOS=linux
