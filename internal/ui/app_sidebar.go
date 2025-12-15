@@ -10,6 +10,7 @@ const (
 	app_sidebar_active_dashboard = "dashboard"
 	app_sidebar_active_buckets   = "buckets"
 	app_sidebar_active_admin     = "admin"
+	app_sidebar_active_profile   = "profile"
 )
 
 func appSidebar(active string) e.Node {
@@ -17,5 +18,6 @@ func appSidebar(active string) e.Node {
 		SidebarItem{Title: "Dashboard", Link: dashboardLink, Active: active == app_sidebar_active_dashboard, Icon: IconGauge},
 		SidebarItem{Title: "Buckets", Link: bucketsLink, Active: active == app_sidebar_active_buckets, Icon: IconArchive},
 		SidebarItem{Title: "Admin", Link: adminLink, Active: active == app_sidebar_active_admin, Icon: IconCog},
+		SidebarItem{Title: "Profile", Link: profileLink, Active: active == app_sidebar_active_profile, Icon: IconUserRound},
 	)
 }

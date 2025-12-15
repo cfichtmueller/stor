@@ -15,6 +15,7 @@ const (
 	adminLink     = "/u/admin"
 	usersLink     = "/u/admin/users"
 	apiKeysLink   = "/u/admin/api-keys"
+	profileLink   = "/u/profile"
 )
 
 type BucketLinks struct {
