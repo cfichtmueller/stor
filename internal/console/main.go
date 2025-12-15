@@ -64,6 +64,7 @@ func Configure() *srv.Server {
 	r.POST("/bucket", handleRpcCreateBucket)
 	r.DELETE("/bucket", handleRpcDeleteBucket, withBucketFromQuery)
 	r.POST("/change-password", handleRpcChangePassword)
+	r.POST("/logout-session", handleRpcLogoutSession)
 	r.POST("/empty-bucket", handleRpcEmptyBucket, withBucketFromQuery)
 
 	console.GET("/open", handleRpcOpenObject, authenticatedFilter)

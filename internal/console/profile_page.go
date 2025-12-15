@@ -6,6 +6,7 @@ package console
 
 import (
 	"github.com/cfichtmueller/srv"
+	"github.com/cfichtmueller/stor/internal/domain/session"
 	"github.com/cfichtmueller/stor/internal/domain/user"
 	"github.com/cfichtmueller/stor/internal/ui"
 )
@@ -20,7 +21,13 @@ func handleProfilePage(c *srv.Context) *srv.Response {
 	if err != nil {
 		return responseFromError(err)
 	}
+	sessions, err := session.List(c, id)
+	if err != nil {
+		return responseFromError(err)
+	}
 	return nodeResponseWithShell(c, ui.ProfilePage(&ui.ProfilePageData{
-		User: u,
+		User:                 u,
+		AuthenticatedSession: contextMustGetAuthenticatedSession(c),
+		Sessions:             sessions,
 	}))
 }
