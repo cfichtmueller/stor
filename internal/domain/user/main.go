@@ -64,11 +64,18 @@ func Configure() {
 	listStmt = db.Prepare("SELECT * FROM users ORDER BY email")
 	findStmt = db.Prepare("SELECT * FROM users WHERE email = $1 LIMIT 1")
 	getStmt = db.Prepare("SELECT * FROM users WHERE id = $1 LIMIT 1")
-	updateStmt = db.Prepare("UPDATE users SET email = $1, enabled = $2, password_hash = $3, last_seen_at = $3 WHERE id = $4")
+	updateStmt = db.Prepare("UPDATE users SET email = $1, enabled = $2, password_hash = $3, last_seen_at = $4 WHERE id = $5")
 }
 
 func Urn(id string) string {
 	return "user:" + id
+}
+
+func IdFromUrn(urn string) (string, error) {
+	if !strings.HasPrefix(urn, "user:") {
+		return "", fmt.Errorf("invalid user urn: %s", urn)
+	}
+	return strings.TrimPrefix(urn, "user:"), nil
 }
 
 func Create(ctx context.Context, cmd CreateCommand) (*User, error) {

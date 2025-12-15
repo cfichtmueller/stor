@@ -63,6 +63,7 @@ func Configure() *srv.Server {
 	r.DELETE("/api-key", handleRpcDeleteApiKey, apiKeyFilter)
 	r.POST("/bucket", handleRpcCreateBucket)
 	r.DELETE("/bucket", handleRpcDeleteBucket, withBucketFromQuery)
+	r.POST("/change-password", handleRpcChangePassword)
 	r.POST("/empty-bucket", handleRpcEmptyBucket, withBucketFromQuery)
 
 	console.GET("/open", handleRpcOpenObject, authenticatedFilter)
@@ -90,6 +91,9 @@ func Configure() *srv.Server {
 	uAdminGroup.GET("", hxRedirectFn("/u/admin/users"))
 	uAdminGroup.GET("/api-keys", handleApiKeysPage)
 	uAdminGroup.GET("/users", handleUsersPage)
+
+	uProfileGroup := uGroup.Group("/profile")
+	uProfileGroup.GET("", handleProfilePage)
 
 	return console
 }
