@@ -14,6 +14,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -58,6 +59,18 @@ func Configure() {
 	tempDir = path.Join(config.DataDir, "chunk_tmp")
 	if err := os.Mkdir(tempDir, 0700); err != nil && !errors.Is(err, os.ErrExist) {
 		log.Fatalf("unable to create chunk temp directory: %v", err)
+	}
+	slog.Info("clearing chunk temp directory")
+	if err := filepath.WalkDir(tempDir, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			return nil
+		}
+		if err := os.Remove(path); err != nil {
+			return fmt.Errorf("unable to delete temp file: %v", err)
+		}
+		return nil
+	}); err != nil {
+		slog.Error("unable to clear chumk temp directory", "error", err)
 	}
 
 	createStmt = db.Prepare("INSERT INTO chunks (id, size, rc) VALUES ($1, $2, $3)")
