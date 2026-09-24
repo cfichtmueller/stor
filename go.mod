@@ -1,14 +1,14 @@
 module github.com/cfichtmueller/stor
 
-go 1.25.5
+go 1.26.0
 
 require (
 	github.com/cfichtmueller/goparts v0.3.0
-	github.com/cfichtmueller/srv v0.5.1
-	github.com/mattn/go-sqlite3 v1.14.32
+	github.com/cfichtmueller/srv v0.7.2
+	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/crypto v0.46.0
-	golang.org/x/sync v0.19.0
+	golang.org/x/crypto v0.57.0
+	golang.org/x/sync v0.23.0
 )
 
 require (
